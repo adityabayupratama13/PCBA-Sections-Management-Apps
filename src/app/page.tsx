@@ -69,7 +69,7 @@ export default function DashboardPage() {
             translateY: [20, 0],
             opacity: [0, 1],
             delay: anime.stagger(100),
-            easing: 'easeOutSpring(1, 80, 10, 0)',
+            easing: 'spring(1, 80, 10, 0)',
             duration: 1000
           });
         }
