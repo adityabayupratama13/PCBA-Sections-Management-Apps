@@ -185,7 +185,7 @@ export default function DailyLogPage() {
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingLog ? 'Edit Daily Log' : 'Add Daily Log'}>
         <form onSubmit={handleSave} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-muted-foreground mb-1.5">Date *</label>
               <input name="date" type="date" required defaultValue={editingLog?.date || new Date().toISOString().split('T')[0]} className="w-full bg-gray-50 dark:bg-background border border-border rounded-lg px-3 py-2 text-foreground focus:outline-none focus:ring-1 focus:ring-primary transition-all" />
@@ -199,7 +199,7 @@ export default function DailyLogPage() {
             <label className="block text-sm font-medium text-muted-foreground mb-1.5">Activity Description *</label>
             <textarea name="activity" required defaultValue={editingLog?.activity} rows={3} className="w-full bg-gray-50 dark:bg-background border border-border rounded-lg px-3 py-2 text-foreground focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all resize-none invalid:border-destructive" />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-muted-foreground mb-1.5">Hours</label>
               <input name="hours" type="number" min="0" max="24" step="0.5" defaultValue={editingLog?.hours || 0} className="w-full bg-gray-50 dark:bg-background border border-border rounded-lg px-3 py-2 text-foreground focus:outline-none focus:ring-1 focus:ring-primary transition-all" />

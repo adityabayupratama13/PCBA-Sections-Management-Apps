@@ -93,7 +93,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Stat Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
         {[
           { label: 'Team Members', val: stats.members, sub: 'Active Accounts', icon: <Users className="w-5 h-5" />, cls: 'text-primary bg-primary/10 border-primary/20' },
           { label: 'Active Tickets', val: stats.tickets.open + stats.tickets.inProgress, sub: `${stats.tickets.resolved} resolved`, icon: <Ticket className="w-5 h-5" />, cls: 'text-orange-400 bg-orange-500/10 border-orange-500/20' },

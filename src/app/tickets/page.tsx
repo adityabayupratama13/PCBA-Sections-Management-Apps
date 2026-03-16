@@ -277,7 +277,7 @@ export default function TicketsPage() {
             <label className="block text-sm font-medium text-muted-foreground mb-1.5">Title *</label>
             <input name="title" required defaultValue={editingTicket?.title} className={inputClass} />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-muted-foreground mb-1.5">Reporter *</label>
               <input name="reporter" required defaultValue={editingTicket?.reporter} className={inputClass} />

@@ -483,7 +483,7 @@ export default function SchedulePage() {
             <label className="block text-sm font-medium text-muted-foreground mb-1.5">Schedule Title *</label>
             <input name="title" required defaultValue={editingSchedule?.title} className="w-full bg-gray-50 dark:bg-background border border-border rounded-lg px-3 py-2 text-foreground focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all invalid:border-destructive" />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-muted-foreground mb-1.5">Type</label>
               <select name="type" defaultValue={editingSchedule?.type || 'Meeting'} className="w-full bg-gray-50 dark:bg-background border border-border rounded-lg px-3 py-2 text-foreground focus:outline-none focus:ring-1 focus:ring-primary transition-all cursor-pointer">
@@ -509,7 +509,7 @@ export default function SchedulePage() {
           </div>
 
           {formRecurrence === 'one-time' && (
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-muted-foreground mb-1.5">Start Date *</label>
                 <input name="date" type="date" required defaultValue={editingSchedule?.date || new Date().toISOString().split('T')[0]}
@@ -539,7 +539,7 @@ export default function SchedulePage() {
             </div>
           )}
           {formRecurrence === 'yearly' && (
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-muted-foreground mb-1.5">Month</label>
                 <select name="monthOfYear" defaultValue={editingSchedule?.monthOfYear || 0}
@@ -555,7 +555,7 @@ export default function SchedulePage() {
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-muted-foreground mb-1.5">Start Time *</label>
               <input name="startTime" type="time" defaultValue={editingSchedule?.startTime || '09:00'} required className="w-full bg-gray-50 dark:bg-background border border-border rounded-lg px-3 py-2 text-foreground focus:outline-none focus:ring-1 focus:ring-primary transition-all" />

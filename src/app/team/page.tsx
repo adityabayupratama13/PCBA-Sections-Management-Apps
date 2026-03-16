@@ -287,8 +287,8 @@ export default function TeamPage() {
 
       {/* Add/Edit Modal */}
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingMember ? 'Edit Member' : 'Register New Member'}>
-        <form onSubmit={handleSave} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+        <form onSubmit={handleSave} className="space-y-4 shadow-sm pb-1 max-h-[75vh] overflow-y-auto px-1 custom-scrollbar">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div><label className="block text-sm font-medium text-muted-foreground mb-1.5">Full Name *</label>
               <input name="name" required defaultValue={editingMember?.name} className={inputClass} /></div>
             <div><label className="block text-sm font-medium text-muted-foreground mb-1.5">Badge Number *</label>
@@ -317,7 +317,7 @@ export default function TeamPage() {
               {roleNames.length > 0 ? roleNames.map(r => <option key={r}>{r}</option>) : <option>IT Support</option>}
             </select>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div><label className="block text-sm font-medium text-muted-foreground mb-1.5">Division</label>
               <input name="division" defaultValue={editingMember?.division} placeholder="e.g. Helpdesk" className={inputClass} /></div>
             <div><label className="block text-sm font-medium text-muted-foreground mb-1.5">Status</label>
@@ -326,7 +326,7 @@ export default function TeamPage() {
                 <option value="Inactive">Inactive</option>
               </select></div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div><label className="block text-sm font-medium text-muted-foreground mb-1.5">Grade / Level</label>
               <select name="grade" defaultValue={editingMember?.grade || ''} className={inputClass + ' cursor-pointer'}>
                 <option value="">— No Grade —</option>

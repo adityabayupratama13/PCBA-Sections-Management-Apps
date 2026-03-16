@@ -296,7 +296,7 @@ export default function TasksPage() {
             <label className="block text-sm font-medium text-muted-foreground mb-1.5">Task Title *</label>
             <input name="title" required defaultValue={editingTask?.title} className={inputClass} />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-muted-foreground mb-1.5">Status</label>
               <select name="status" defaultValue={editingTask?.status || 'Backlog'} className={inputClass + ' cursor-pointer'}>

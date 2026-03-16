@@ -980,7 +980,7 @@ export default function AttendancePage() {
       {/* Absolute Root Modals (Independent of Tabs) */}
       <Modal isOpen={isEmpStatusModalOpen} onClose={() => { setIsEmpStatusModalOpen(false); setEditingEmpStatus(null); }} title={`Edit Status: ${editingEmpStatus?.name}`}>
         <form onSubmit={handleEmpStatusSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-foreground mb-1">Employment Status</label>
               <select 
@@ -1004,7 +1004,7 @@ export default function AttendancePage() {
               <input type="number" name="contract_duration" min="0" defaultValue={editingEmpStatus?.contract_duration || 0} className="w-full bg-background border border-border rounded-lg px-3 py-2 focus:ring-1 focus:ring-primary outline-none" required />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-medium text-foreground mb-1">Join Date</label>
               <input type="date" name="join_date" defaultValue={editingEmpStatus?.join_date || (editingEmpStatus?.created_at ? editingEmpStatus.created_at.split('T')[0] : '')} className="w-full bg-background border border-border rounded-lg px-3 py-2 focus:ring-1 focus:ring-primary outline-none" required />
@@ -1036,7 +1036,7 @@ export default function AttendancePage() {
               {LEAVE_TYPES.map(t => <option key={t}>{t}</option>)}
             </select>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-muted-foreground mb-1.5">Start Date *</label>
               <input name="start_date" type="date" required defaultValue={editingLeaveLog?.start_date || ''} className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-foreground focus:ring-1 focus:ring-primary outline-none" />
@@ -1046,7 +1046,7 @@ export default function AttendancePage() {
               <input name="end_date" type="date" required defaultValue={editingLeaveLog?.end_date || ''} className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-foreground focus:ring-1 focus:ring-primary outline-none" />
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-muted-foreground mb-1.5">Duration (Days) *</label>
               <input name="days_count" type="number" step="0.5" required min="0.5" defaultValue={editingLeaveLog?.days_count || ''} className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-foreground focus:ring-1 focus:ring-primary outline-none" />
@@ -1081,7 +1081,7 @@ export default function AttendancePage() {
              <label className="block text-sm font-medium text-muted-foreground mb-1.5">Date *</label>
              <input name="date" type="date" required defaultValue={editingOtLog?.date || format(new Date(), 'yyyy-MM-dd')} className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-foreground focus:ring-1 focus:ring-primary outline-none" />
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
              <div>
                 <label className="block text-sm font-medium text-muted-foreground mb-1.5">Start Hour *</label>
                 <input name="ot_start_time" type="time" required defaultValue={editingOtLog?.ot_start_time || '18:00'} className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-foreground focus:ring-1 focus:ring-primary outline-none" />
