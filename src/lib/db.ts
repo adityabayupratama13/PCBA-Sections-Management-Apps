@@ -190,6 +190,7 @@ function initSchema(db: Database.Database) {
   try { db.exec('ALTER TABLE schedules ADD COLUMN end_date TEXT DEFAULT ""'); } catch { /* ignore if already exists */ }
   try { db.exec('ALTER TABLE members ADD COLUMN grade TEXT DEFAULT ""'); } catch { /* column exists */ }
   try { db.exec('ALTER TABLE tasks ADD COLUMN ticket_id TEXT DEFAULT ""'); } catch { /* column exists */ }
+  try { db.exec('ALTER TABLE attendance_logs ADD COLUMN ot_start_time TEXT DEFAULT ""'); } catch { /* column exists */ }
   try { db.exec('ALTER TABLE attendance_logs ADD COLUMN ot_end_time TEXT DEFAULT ""'); } catch { /* column exists */ }
   try { db.exec('ALTER TABLE tasks ADD COLUMN resolution TEXT DEFAULT ""'); } catch {}
   try { db.exec('ALTER TABLE tasks ADD COLUMN attachments TEXT DEFAULT "[]"'); } catch {}

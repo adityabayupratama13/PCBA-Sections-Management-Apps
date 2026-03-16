@@ -323,7 +323,7 @@ export default function AttendancePage() {
 
       const existingShift = logs.find(l => l.member_name === mem && l.date === dateStr)?.shift || 'Off';
       
-      await createLog({
+      const res = await createLog({
         member_name: mem, 
         date: dateStr, 
         shift: existingShift,
@@ -334,9 +334,11 @@ export default function AttendancePage() {
         userName: currentUser?.name || ''
       } as unknown as AttendanceLog);
       
-      toast.success('Overtime recorded successfully');
-      setIsOtModalOpen(false);
-      fetchLogs();
+      if (res) {
+        toast.success('Overtime recorded successfully');
+        setIsOtModalOpen(false);
+        fetchLogs();
+      }
     } catch { toast.error('Failed to record overtime'); }
   };
   
