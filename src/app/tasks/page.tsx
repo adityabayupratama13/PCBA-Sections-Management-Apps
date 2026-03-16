@@ -9,6 +9,8 @@ import { Modal, ConfirmDialog } from '@/components/Modal';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
 import { useApi } from '@/hooks/useApi';
+import anime from 'animejs';
+import { useRef } from 'react';
 
 type TaskState = 'Backlog' | 'In Progress' | 'Review' | 'Done';
 
@@ -45,6 +47,7 @@ export default function TasksPage() {
   const [filterDate, setFilterDate] = useState<string>(''); // For daily filter
   const [uploading, setUploading] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setFilterDate(new Date().toISOString().split('T')[0]);
@@ -173,10 +176,23 @@ export default function TasksPage() {
 
   const inputClass = "w-full bg-gray-50 dark:bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all";
 
+  useEffect(() => {
+    if (!loading && containerRef.current) {
+      anime({
+        targets: containerRef.current.querySelectorAll('.animate-enter'),
+        translateY: [30, 0],
+        opacity: [0, 1],
+        delay: anime.stagger(100),
+        easing: 'spring(1, 80, 10, 0)',
+        duration: 800
+      });
+    }
+  }, [loading]);
+
   if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>;
 
   return (
-    <div className="space-y-6 pb-8">
+    <div ref={containerRef} className="space-y-6 pb-8">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Task Tracking</h1>

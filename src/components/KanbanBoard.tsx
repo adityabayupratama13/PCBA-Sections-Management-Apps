@@ -1,4 +1,6 @@
+'use client';
 import { ReactNode } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const COLUMN_STYLES: Record<string, { dot: string; badge: string }> = {
   'Backlog':     { dot: 'bg-muted-foreground', badge: 'bg-muted text-muted-foreground border-border' },
@@ -15,11 +17,26 @@ interface KanbanColumnProps {
   onDrop?: (id: number) => void;
 }
 
-export function KanbanColumn({ title, children, count, onAdd }: KanbanColumnProps) {
+export function KanbanColumn({ title, children, count, onAdd, onDrop }: KanbanColumnProps) {
   const styles = COLUMN_STYLES[title] || COLUMN_STYLES['Backlog'];
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    const taskIdStr = e.dataTransfer.getData('taskId');
+    if (taskIdStr && onDrop) {
+      onDrop(Number(taskIdStr));
+    }
+  };
+
   return (
-    <div className="flex flex-col rounded-2xl min-w-[320px] flex-1 shrink-0 overflow-hidden border"
+    <div className="animate-enter opacity-0 flex flex-col rounded-2xl min-w-[320px] flex-1 shrink-0 overflow-hidden border"
       style={{ background: 'var(--muted)', borderColor: 'var(--border)' }}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
     >
       <div className="px-4 py-3.5 flex justify-between items-center border-b" style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
         <div className="flex items-center gap-2">
@@ -40,7 +57,9 @@ export function KanbanColumn({ title, children, count, onAdd }: KanbanColumnProp
         </div>
       </div>
       <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2.5 custom-scrollbar">
-        {children}
+        <AnimatePresence>
+          {children}
+        </AnimatePresence>
       </div>
     </div>
   );
@@ -54,14 +73,34 @@ interface KanbanCardProps {
   id?: number;
 }
 
-export function KanbanCard({ children, onClick, onEdit, onDelete }: KanbanCardProps) {
+export function KanbanCard({ children, onClick, onEdit, onDelete, id }: KanbanCardProps) {
+  const handleDragStart = (e: any) => {
+    if (id !== undefined) {
+      e.dataTransfer.setData('taskId', id.toString());
+      // Optional: change opacity or style during drag
+      e.currentTarget.style.opacity = '0.5';
+    }
+  };
+
+  const handleDragEnd = (e: any) => {
+    e.currentTarget.style.opacity = '1';
+  };
+
   return (
-    <div
+    <motion.div
+      layout
+      layoutId={id ? `task-${id}` : undefined}
+      initial={{ opacity: 0, scale: 0.95, y: 15 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.9, y: -15 }}
+      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+      draggable={id !== undefined}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
       onClick={onClick}
-      className={`rounded-xl p-4 border transition-all duration-200 hover:-translate-y-0.5 hover:shadow-card-hover group relative ${onClick ? 'cursor-pointer' : 'cursor-default'}`}
+      whileHover={onClick || id !== undefined ? { borderColor: 'var(--primary)', boxShadow: '0 4px 20px var(--primary-glow)' } : undefined}
+      className={`rounded-xl p-4 border transition-all duration-200 group relative ${onClick ? 'cursor-pointer' : id !== undefined ? 'cursor-grab active:cursor-grabbing hover:-translate-y-0.5 hover:shadow-card-hover' : 'cursor-default'}`}
       style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}
-      onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'var(--primary)'; e.currentTarget.style.boxShadow = '0 4px 20px var(--primary-glow)'; }}
-      onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.boxShadow = ''; }}
     >
       {children}
       {(onEdit || onDelete) && (
@@ -82,6 +121,6 @@ export function KanbanCard({ children, onClick, onEdit, onDelete }: KanbanCardPr
           )}
         </div>
       )}
-    </div>
+    </motion.div>
   );
 }
