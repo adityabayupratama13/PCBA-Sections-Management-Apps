@@ -1,6 +1,6 @@
-'use client';
 import { ReactNode, useEffect } from 'react';
 import { X, AlertTriangle } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface ModalProps {
   isOpen: boolean;
@@ -22,15 +22,25 @@ export function Modal({ isOpen, onClose, title, children, maxWidth = 'max-w-md' 
     };
   }, [isOpen]);
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      <div 
-        className="absolute inset-0 bg-black/60 dark:bg-background/80 backdrop-blur-sm transition-opacity" 
-        onClick={onClose}
-      />
-      <div className={`relative bg-white dark:bg-surface border border-border rounded-xl shadow-2xl w-full ${maxWidth} overflow-hidden transform transition-all`}>
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="absolute inset-0 bg-black/60 dark:bg-background/80 backdrop-blur-sm transition-opacity" 
+            onClick={onClose}
+          />
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: -10 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 400 }}
+            className={`relative bg-white dark:bg-surface border border-border rounded-xl shadow-2xl w-full ${maxWidth} overflow-hidden`}
+          >
         <div className="flex items-center justify-between p-4 border-b border-border">
           <h2 className="text-lg font-semibold text-foreground">{title}</h2>
           <button 
@@ -43,8 +53,10 @@ export function Modal({ isOpen, onClose, title, children, maxWidth = 'max-w-md' 
         <div className="p-4">
           {children}
         </div>
-      </div>
-    </div>
+      </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
   );
 }
 
@@ -60,17 +72,27 @@ interface ConfirmDialogProps {
 }
 
 export function ConfirmDialog({ isOpen, onClose, onConfirm, title, message, confirmLabel = 'Delete', variant = 'danger' }: ConfirmDialogProps) {
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
-      <div 
-        className="absolute inset-0 bg-black/60 dark:bg-background/80 backdrop-blur-sm transition-opacity" 
-        onClick={onClose}
-      />
-      <div className="relative bg-white dark:bg-surface border border-border rounded-xl shadow-2xl w-full max-w-sm overflow-hidden transform transition-all">
-        <div className="p-6">
-          <div className={`mx-auto w-12 h-12 rounded-full flex items-center justify-center mb-4 ${
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="absolute inset-0 bg-black/60 dark:bg-background/80 backdrop-blur-sm transition-opacity" 
+            onClick={onClose}
+          />
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+            transition={{ type: 'spring', damping: 20, stiffness: 350 }}
+            className="relative bg-white dark:bg-surface border border-border rounded-xl shadow-2xl w-full max-w-sm overflow-hidden"
+          >
+            <div className="p-6">
+              <div className={`mx-auto w-12 h-12 rounded-full flex items-center justify-center mb-4 ${
             variant === 'danger' ? 'bg-destructive/10 text-destructive' : 'bg-orange-500/10 text-orange-500'
           }`}>
             <AlertTriangle className="w-6 h-6" />
@@ -94,7 +116,9 @@ export function ConfirmDialog({ isOpen, onClose, onConfirm, title, message, conf
             {confirmLabel}
           </button>
         </div>
-      </div>
-    </div>
+      </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
   );
 }
