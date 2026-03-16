@@ -230,7 +230,7 @@ export default function TasksPage() {
         </select>
       </div>
 
-      <div className="flex overflow-x-auto custom-scrollbar pb-4 gap-4">
+      <div className="flex overflow-x-auto custom-scrollbar pb-4 gap-4 w-full">
         {COLUMNS.map(col => {
           let colTasks = filteredTasks.filter(t => t.status === col);
           

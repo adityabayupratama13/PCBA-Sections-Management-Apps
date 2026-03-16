@@ -18,7 +18,7 @@ interface KanbanColumnProps {
 export function KanbanColumn({ title, children, count, onAdd }: KanbanColumnProps) {
   const styles = COLUMN_STYLES[title] || COLUMN_STYLES['Backlog'];
   return (
-    <div className="flex flex-col rounded-2xl w-[320px] shrink-0 overflow-hidden border"
+    <div className="flex flex-col rounded-2xl min-w-[320px] flex-1 shrink-0 overflow-hidden border"
       style={{ background: 'var(--muted)', borderColor: 'var(--border)' }}
     >
       <div className="px-4 py-3.5 flex justify-between items-center border-b" style={{ borderColor: 'var(--border)', background: 'var(--surface)' }}>
