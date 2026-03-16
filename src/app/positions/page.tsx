@@ -133,8 +133,6 @@ export default function PositionsPage() {
     }
   ];
 
-  if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>;
-
   return (
     <div className="space-y-6 pb-8">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -160,7 +158,7 @@ export default function PositionsPage() {
         </select>
       </div>
 
-      <DataTable columns={columns} data={filtered} keyExtractor={p => p.id} onRowClick={(p) => setManagingDesc(p)} />
+      <DataTable columns={columns} data={filtered} keyExtractor={p => p.id} onRowClick={(p) => setManagingDesc(p)} isLoading={loading} />
 
       {/* Info */}
       <div className="flex items-center gap-3 p-3 rounded-xl border border-border text-sm" style={{ background: 'var(--surface)' }}>

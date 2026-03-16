@@ -132,8 +132,6 @@ export default function DailyLogPage() {
     return { day: i + 1, dateStr, count: dayLogs.length, totalHours: dayLogs.reduce((s, l) => s + l.hours, 0) };
   });
 
-  if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>;
-
   return (
     <div className="space-y-6 pb-8">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -181,7 +179,7 @@ export default function DailyLogPage() {
         </div>
       )}
 
-      <DataTable data={filteredLogs} columns={columns} />
+      <DataTable data={filteredLogs} columns={columns} isLoading={loading} />
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingLog ? 'Edit Daily Log' : 'Add Daily Log'}>
         <form onSubmit={handleSave} className="space-y-4">

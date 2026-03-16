@@ -1,4 +1,5 @@
 import { ReactNode } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface Column<T> {
   header: string;
@@ -11,9 +12,39 @@ interface DataTableProps<T> {
   data: T[];
   keyExtractor?: (item: T) => string | number;
   onRowClick?: (item: T) => void;
+  isLoading?: boolean;
 }
 
-export function DataTable<T>({ columns, data, keyExtractor, onRowClick }: DataTableProps<T>) {
+export function DataTable<T>({ columns, data, keyExtractor, onRowClick, isLoading }: DataTableProps<T>) {
+  if (isLoading) {
+    return (
+      <div className="rounded-2xl overflow-hidden border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+        <table className="w-full text-sm text-left">
+          <thead style={{ background: 'var(--muted)', borderBottom: '1px solid var(--border)' }}>
+            <tr>
+              {columns.map((col, i) => (
+                <th key={i} className={`px-5 py-3.5 font-semibold text-xs uppercase tracking-wider text-muted-foreground ${col.className || ''}`}>
+                  {col.header}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y" style={{ borderColor: 'var(--border)' }}>
+            {[1, 2, 3, 4, 5].map((i) => (
+              <tr key={i}>
+                {columns.map((_, colIndex) => (
+                  <td key={colIndex} className="px-5 py-4">
+                    <div className="h-4 bg-muted/50 rounded animate-pulse w-3/4" />
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  }
+
   if (data.length === 0) {
     return (
       <div className="rounded-2xl p-12 text-center border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
@@ -39,23 +70,37 @@ export function DataTable<T>({ columns, data, keyExtractor, onRowClick }: DataTa
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y" style={{ borderColor: 'var(--border)' }}>
-            {data.map((item, idx) => (
-              <tr key={keyExtractor ? keyExtractor(item) : idx}
-                className={`transition-colors group ${onRowClick ? 'cursor-pointer' : ''}`}
-                style={{}}
-                onClick={() => onRowClick && onRowClick(item)}
-                onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--muted)')}
-                onMouseLeave={(e) => (e.currentTarget.style.background = '')}
-              >
-                {columns.map((col, colIndex) => (
-                  <td key={colIndex} className={`px-5 py-3.5 text-foreground/90 group-hover:text-foreground transition-colors ${col.className || ''}`}>
-                    {typeof col.accessor === 'function' ? col.accessor(item) : (item[col.accessor] as ReactNode)}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
+          <motion.tbody 
+            className="divide-y" 
+            style={{ borderColor: 'var(--border)' }}
+            initial="hidden"
+            animate="visible"
+            variants={{
+              visible: { transition: { staggerChildren: 0.05 } }
+            }}
+          >
+            <AnimatePresence>
+              {data.map((item, idx) => (
+                <motion.tr 
+                  key={keyExtractor ? keyExtractor(item) : idx}
+                  variants={{
+                    hidden: { opacity: 0, y: 15 },
+                    visible: { opacity: 1, y: 0, transition: { type: 'spring', stiffness: 300, damping: 24 } }
+                  }}
+                  className={`transition-colors group ${onRowClick ? 'cursor-pointer' : ''}`}
+                  onClick={() => onRowClick && onRowClick(item)}
+                  whileHover={{ backgroundColor: 'var(--muted)', scale: 1.005 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  {columns.map((col, colIndex) => (
+                    <td key={colIndex} className={`px-5 py-3.5 text-foreground/90 group-hover:text-foreground transition-colors ${col.className || ''}`}>
+                      {typeof col.accessor === 'function' ? col.accessor(item) : (item[col.accessor] as ReactNode)}
+                    </td>
+                  ))}
+                </motion.tr>
+              ))}
+            </AnimatePresence>
+          </motion.tbody>
         </table>
       </div>
     </div>

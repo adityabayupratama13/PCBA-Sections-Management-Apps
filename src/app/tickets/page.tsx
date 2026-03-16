@@ -200,8 +200,6 @@ export default function TicketsPage() {
     }
   ];
 
-  if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>;
-
   return (
     <div className="space-y-6 pb-8">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -268,7 +266,7 @@ export default function TicketsPage() {
           <p className="text-muted-foreground mt-1">Try adjusting your search or filters</p>
         </div>
       ) : (
-        <DataTable data={filteredTickets} columns={columns} />
+        <DataTable data={filteredTickets} columns={columns} isLoading={loading} />
       )}
 
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingTicket ? 'Edit Ticket' : 'New Ticket'}>
