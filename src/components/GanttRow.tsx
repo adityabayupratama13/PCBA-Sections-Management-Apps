@@ -21,14 +21,13 @@ export function GanttRow({ name, pic, startDate, endDate, progress, status }: Ga
   return (
     <div className="flex items-center py-3.5 border-b border-border/40 last:border-0 transition-colors group px-2 rounded-lg"
       onMouseEnter={e => { e.currentTarget.style.background = 'var(--muted)'; }}
-      onMouseLeave={e => { e.currentTarget.style.background = ''; }}
-    >
-      <div className="w-1/4 pr-4 flex flex-col pl-2">
-        <span className="text-sm font-semibold text-foreground truncate group-hover:text-primary transition-colors">{name}</span>
-        <span className="text-xs text-muted-foreground truncate mt-0.5">PIC: {pic}</span>
-      </div>
-      <div className="w-3/4 flex flex-col justify-center pr-2">
-        <div className="flex justify-between text-[10.5px] text-muted-foreground mb-1 font-medium px-1 uppercase tracking-wider">
+      >
+        <div className="w-[30%] shrink-0 pr-4 flex flex-col pl-2 overflow-hidden">
+          <span className="text-sm font-semibold text-foreground truncate group-hover:text-primary transition-colors">{name}</span>
+          <span className="text-xs text-muted-foreground truncate mt-0.5">PIC: {pic}</span>
+        </div>
+        <div className="flex-1 flex flex-col justify-center pr-2 overflow-hidden">
+          <div className="flex justify-between text-[10.5px] text-muted-foreground mb-1 font-medium px-1 uppercase tracking-wider">
           <span>{startDate.toISOString().split('T')[0]}</span>
           <span className="text-foreground/50">{status}</span>
           <span>{endDate.toISOString().split('T')[0]}</span>

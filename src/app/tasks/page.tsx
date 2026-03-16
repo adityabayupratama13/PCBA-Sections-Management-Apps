@@ -230,7 +230,7 @@ export default function TasksPage() {
         </select>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="flex overflow-x-auto custom-scrollbar pb-4 gap-4">
         {COLUMNS.map(col => {
           let colTasks = filteredTasks.filter(t => t.status === col);
           
@@ -245,45 +245,43 @@ export default function TasksPage() {
             <KanbanColumn key={col} title={col} count={colTasks.length}
               onAdd={() => openAddModal(col)}
               onDrop={async (taskId: number) => handleStatusChange(taskId, col)}>
-              <div className="max-h-[60vh] overflow-y-auto custom-scrollbar pr-1 space-y-3 pb-2">
-                {colTasks.map(task => {
-                  let isStale = false;
-                  if (task.status !== 'Done' && task.due_date) {
-                    const diffDays = (new Date().getTime() - new Date(task.due_date).getTime()) / (1000 * 3600 * 24);
-                    if (diffDays > 1) isStale = true;
-                  }
+              {colTasks.map(task => {
+                let isStale = false;
+                if (task.status !== 'Done' && task.due_date) {
+                  const diffDays = (new Date().getTime() - new Date(task.due_date).getTime()) / (1000 * 3600 * 24);
+                  if (diffDays > 1) isStale = true;
+                }
 
-                  return (
-                    <KanbanCard key={task.id} id={task.id}
-                      onEdit={() => openEditModal(task)} onDelete={() => setDeleteTarget(task)}>
-                      <div className="flex items-start justify-between gap-2 mb-2">
-                        <h4 className="text-sm font-medium text-foreground leading-snug">{task.title}</h4>
-                        {priorityDot(task.priority)}
+                return (
+                  <KanbanCard key={task.id} id={task.id}
+                    onEdit={() => openEditModal(task)} onDelete={() => setDeleteTarget(task)}>
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <h4 className="text-sm font-medium text-foreground leading-snug">{task.title}</h4>
+                      {priorityDot(task.priority)}
+                    </div>
+                    
+                    {isStale && (
+                      <div className="mb-2 inline-flex items-center rounded-sm bg-destructive/10 px-1.5 py-0.5 text-[10px] font-medium text-destructive ring-1 ring-inset ring-destructive/20">
+                        ⚠️ Overdue
                       </div>
-                      
-                      {isStale && (
-                        <div className="mb-2 inline-flex items-center rounded-sm bg-destructive/10 px-1.5 py-0.5 text-[10px] font-medium text-destructive ring-1 ring-inset ring-destructive/20">
-                          ⚠️ Overdue
-                        </div>
+                    )}
+
+                    <div className="flex items-center justify-between mt-3">
+                      <div className="flex items-center gap-1">
+                        <Users className="w-3 h-3 text-muted-foreground" />
+                        <span className="text-[10px] text-muted-foreground">
+                          {task.assignee.split(', ').filter(a => allMembers.some(m => m.name === a) || a === 'Unassigned').join(', ') || 'Unassigned'}
+                        </span>
+                      </div>
+                      {task.due_date && (
+                        <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                          <CalendarIcon className="w-3 h-3" />{new Date(task.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        </span>
                       )}
-
-                      <div className="flex items-center justify-between mt-3">
-                        <div className="flex items-center gap-1">
-                          <Users className="w-3 h-3 text-muted-foreground" />
-                          <span className="text-[10px] text-muted-foreground">
-                            {task.assignee.split(', ').filter(a => allMembers.some(m => m.name === a) || a === 'Unassigned').join(', ') || 'Unassigned'}
-                          </span>
-                        </div>
-                        {task.due_date && (
-                          <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                            <CalendarIcon className="w-3 h-3" />{new Date(task.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                          </span>
-                        )}
-                      </div>
-                    </KanbanCard>
-                  )
-                })}
-              </div>
+                    </div>
+                  </KanbanCard>
+                )
+              })}
             </KanbanColumn>
           )
         })}

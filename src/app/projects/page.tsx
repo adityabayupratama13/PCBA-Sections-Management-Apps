@@ -173,7 +173,7 @@ export default function ProjectsPage() {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-6">
         <div className="rounded-2xl border p-5 flex items-center gap-4" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
           <div className="p-3 bg-primary/15 text-primary rounded-xl border border-primary/20"><FolderKanban className="w-6 h-6" /></div>
           <div><p className="text-sm font-medium text-muted-foreground">Active Projects</p><h3 className="text-2xl font-bold text-foreground">{activeProjects}</h3></div>
@@ -199,10 +199,10 @@ export default function ProjectsPage() {
           </div>
         </div>
         <div className="p-4 overflow-x-auto custom-scrollbar">
-          <div className="min-w-[800px]">
+          <div className="min-w-[950px]">
             <div className="flex border-b border-border/50 pb-2 mb-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-              <div className="w-1/4 pl-4">Project Details</div>
-              <div className="w-3/4 flex justify-between pr-4 relative">
+              <div className="w-[30%] pl-4 shrink-0">Project Details</div>
+              <div className="flex-1 flex justify-between pr-4 relative">
                 <span className="opacity-80">Progress Status</span>
               </div>
             </div>
@@ -216,7 +216,7 @@ export default function ProjectsPage() {
                     <div className="group relative cursor-pointer" onClick={() => setExpandedProject(isExpanded ? null : project.id)}>
                       <GanttRow name={project.name} pic={project.pic} startDate={new Date(project.startDate)} endDate={new Date(project.endDate)} progress={autoProgress} status={project.status} />
                       {hasLinks && (
-                        <div className="absolute left-[22%] top-1/2 -translate-y-1/2 flex items-center gap-1">
+                        <div className="absolute left-[29%] top-1/2 -translate-y-1/2 flex items-center gap-1 z-10 bg-surface/80 px-1 rounded backdrop-blur-sm">
                           <Link2 className="w-3 h-3 text-primary" />
                           <span className="text-[10px] text-primary font-medium">{(project.linkedTasks?.length || 0) + (project.linkedSchedules?.length || 0)} linked</span>
                         </div>

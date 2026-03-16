@@ -345,8 +345,8 @@ export default function SchedulePage() {
     };
     const todayStr = new Date().toISOString().split('T')[0];
     return (
-      <div className="p-4">
-        <div className="grid grid-cols-7 gap-px bg-border rounded-lg overflow-hidden border border-border">
+      <div className="p-4 overflow-x-auto custom-scrollbar">
+        <div className="min-w-[700px] grid grid-cols-7 gap-px bg-border rounded-lg overflow-hidden border border-border">
           {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => (
             <div key={d} className="py-2 text-center text-xs font-semibold text-muted-foreground uppercase tracking-wider" style={{ background: 'var(--muted)' }}>{d}</div>
           ))}
@@ -380,7 +380,7 @@ export default function SchedulePage() {
   // ─── YEARLY VIEW ───
   const YearlyView = () => (
     <div className="p-6">
-      <div className="grid grid-cols-3 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {MONTHS.map((month, idx) => {
           const count = getScheduleCountForMonth(idx);
           const isCurrentMonth = idx === new Date().getMonth() && currentYear === new Date().getFullYear();
