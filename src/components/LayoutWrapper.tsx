@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { Sidebar } from "@/components/Sidebar";
 import { Header } from "@/components/Header";
 import { PageTransition } from "@/components/PageTransition";
+import { AnimatePresence } from "framer-motion";
 
 export function LayoutWrapper({ children }: { children: React.ReactNode }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -13,7 +14,9 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
   if (pathname === '/login') {
     return (
       <main className="min-h-screen bg-background">
-        <PageTransition>{children}</PageTransition>
+        <AnimatePresence mode="wait">
+          <PageTransition>{children}</PageTransition>
+        </AnimatePresence>
       </main>
     );
   }
@@ -27,9 +30,11 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <Header onMenuClick={() => setIsMobileMenuOpen(true)} />
         <main className="flex-1 overflow-y-auto custom-scrollbar p-6 relative" style={{ background: 'var(--background)' }}>
-          <PageTransition>
-            {children}
-          </PageTransition>
+          <AnimatePresence mode="wait">
+            <PageTransition>
+              {children}
+            </PageTransition>
+          </AnimatePresence>
         </main>
       </div>
     </div>
