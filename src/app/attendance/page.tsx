@@ -1,7 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CalendarDays, Clock, FileText, ChevronLeft, ChevronRight, CheckCircle2, XCircle, Search, User, Download, Edit, Trash2 } from 'lucide-react';
+import { CalendarDays, Clock, FileText, ChevronLeft, ChevronRight, CheckCircle2, XCircle, Search, User, Download, Edit, Trash2, Users } from 'lucide-react';
 import { useApi } from '@/hooks/useApi';
 import { useAuth } from '@/context/AuthContext';
 import { format, addDays, startOfWeek, subMonths, setDate, isWithinInterval, addMonths } from 'date-fns';
@@ -50,7 +50,7 @@ export default function AttendancePage() {
   // Refresh on mount
   useEffect(() => { fetchLogs(); fetchLeaves(); fetchBalances(); }, [fetchLogs, fetchLeaves, fetchBalances]);
   
-  const [activeTab, setActiveTab] = useState<'roster' | 'overtime' | 'leave'>('roster');
+  const [activeTab, setActiveTab] = useState<'roster' | 'overtime' | 'leave' | 'employee-status'>('roster');
   
   // Tab 1: Roster State
   const [weekStart, setWeekStart] = useState(startOfWeek(new Date(), { weekStartsOn: 1 }));
@@ -72,6 +72,11 @@ export default function AttendancePage() {
   const [viewingLeave, setViewingLeave] = useState<LeaveReq | null>(null);
   const [deleteLeaveId, setDeleteLeaveId] = useState<number | null>(null);
   const [deleteOtLog, setDeleteOtLog] = useState<AttendanceLog | null>(null);
+  
+  // Tab 4: Employee Status State
+  const [isEmpStatusModalOpen, setIsEmpStatusModalOpen] = useState(false);
+  const [editingEmpStatus, setEditingEmpStatus] = useState<typeof members[0] | null>(null);
+  const { updateMember } = useAuth();
   
   const handleShiftChange = async (memberName: string, date: string, newShift: string) => {
     if (newShift === 'Leave') {
@@ -752,6 +757,168 @@ export default function AttendancePage() {
     );
   };
 
+  // --- Helpers Tab 4: Employee Status ---
+  const handleEmpStatusSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingEmpStatus) return;
+    const fd = new FormData(e.target as HTMLFormElement);
+    try {
+      await updateMember({
+        ...editingEmpStatus,
+        join_date: fd.get('join_date') as string,
+        finish_date: fd.get('finish_date') as string,
+        employment_status: fd.get('employment_status') as string,
+        contract_duration: Number(fd.get('contract_duration')),
+      });
+      toast.success('Employee status updated successfully');
+      setIsEmpStatusModalOpen(false);
+      setEditingEmpStatus(null);
+    } catch {
+      toast.error('Failed to update employee status');
+    }
+  };
+
+  const EmployeeStatusTab = () => {
+    const getWorkingDuration = (startDateStr: string) => {
+      if (!startDateStr) return '--';
+      const start = new Date(startDateStr);
+      const now = new Date();
+      if (start > now) return '0 Days';
+      
+      let years = now.getFullYear() - start.getFullYear();
+      let months = now.getMonth() - start.getMonth();
+      let days = now.getDate() - start.getDate();
+      
+      if (days < 0) {
+        months -= 1;
+        const prevMonth = new Date(now.getFullYear(), now.getMonth(), 0);
+        days += prevMonth.getDate();
+      }
+      if (months < 0) {
+        years -= 1;
+        months += 12;
+      }
+      
+      let parts = [];
+      if (years > 0) parts.push(`${years} Year${years > 1 ? 's' : ''}`);
+      if (months > 0) parts.push(`${months} Month${months > 1 ? 's' : ''}`);
+      if (days > 0 || parts.length === 0) parts.push(`${days} Day${days !== 1 ? 's' : ''}`);
+      
+      return parts.join(' ');
+    };
+
+    const exportEmpStatus = (type: 'excel' | 'pdf') => {
+      const headers = ['Name', 'Badge', 'Role', 'Grade', 'Join Date', 'Finish Date', 'Working Duration', 'Plan Contract (Months)', 'Status', 'Days Left'];
+      const dataObj: Record<string, string | number>[] = members.map(m => {
+        let daysLeft: number | string = '--';
+        if (m.finish_date) {
+           const timeDiff = new Date(m.finish_date).getTime() - new Date().getTime();
+           daysLeft = Math.ceil(timeDiff / (1000 * 3600 * 24));
+        }
+        const effectiveJoinDate = m.join_date || (m.created_at ? m.created_at.split('T')[0] : '');
+        const workingDur = effectiveJoinDate ? getWorkingDuration(effectiveJoinDate) : '--';
+        return { 'Name': m.name, 'Badge': m.badge, 'Role': m.role, 'Grade': m.grade || '--', 'Join Date': effectiveJoinDate || '--', 'Finish Date': m.finish_date || '--', 'Working Duration': workingDur, 'Plan Contract (Months)': m.contract_duration || 0, 'Status': m.employment_status || 'Permanent', 'Days Left': daysLeft };
+      });
+      if (type === 'excel') exportToExcel(dataObj, `Employee_Status_${format(new Date(), 'MMM_yyyy')}`);
+      else exportToPdf(headers, dataObj.map((obj: Record<string, string | number>) => headers.map(h => obj[h] || '')), `Employee_Status_${format(new Date(), 'MMM_yyyy')}`, 'Employee Status Report');
+    };
+
+    return (
+      <div className="space-y-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+          <div className="flex items-center gap-3">
+            <h3 className="text-lg font-semibold text-foreground flex items-center gap-2"><Users className="w-5 h-5 text-primary"/> Employee Status</h3>
+            <div className="hidden sm:flex items-center gap-2 border-l border-border pl-3 ml-1">
+               <button onClick={() => exportEmpStatus('excel')} className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-md border border-green-600/20 text-green-600 hover:bg-green-600/10 transition-colors"><Download className="w-3.5 h-3.5"/> Excel</button>
+               <button onClick={() => exportEmpStatus('pdf')} className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-md border border-red-600/20 text-red-600 hover:bg-red-600/10 transition-colors"><Download className="w-3.5 h-3.5"/> PDF</button>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-surface border border-border rounded-xl overflow-hidden shadow-sm">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm text-left">
+              <thead className="bg-muted/50 text-muted-foreground text-xs uppercase border-b border-border">
+                <tr>
+                  <th className="px-5 py-3">Member Info</th>
+                  <th className="px-5 py-3">Contract & Role</th>
+                  <th className="px-5 py-3">Dates</th>
+                  <th className="px-5 py-3 text-center">Counting Contract</th>
+                  <th className="px-5 py-3 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
+                {members.map(m => {
+                  let daysLeftText = '--';
+                  let isEndingSoon = false;
+                  let isFinished = false;
+
+                  if (m.employment_status === 'Contract' && m.finish_date) {
+                    const timeDiff = new Date(m.finish_date).getTime() - new Date().getTime();
+                    const daysLeft = Math.ceil(timeDiff / (1000 * 3600 * 24));
+                    if (daysLeft < 0) {
+                      daysLeftText = 'Expired';
+                      isFinished = true;
+                    } else {
+                      daysLeftText = `${daysLeft} Days Left`;
+                      if (daysLeft <= 30) isEndingSoon = true;
+                    }
+                  } else if (m.employment_status === 'Permanent') {
+                     daysLeftText = 'N/A';
+                  }
+                  
+                  const effectiveJoinDate = m.join_date || (m.created_at ? m.created_at.split('T')[0] : '');
+                  const workingDurationText = effectiveJoinDate ? getWorkingDuration(effectiveJoinDate) : '--';
+
+                  return (
+                    <tr key={m.id} className="hover:bg-muted/30 transition-colors">
+                      <td className="px-5 py-3">
+                        <div className="font-bold text-foreground flex items-center gap-2">
+                           {m.name}
+                           {isEndingSoon && <span className="w-2 h-2 rounded-full bg-warning animate-pulse" title="Contract ending soon!" />}
+                        </div>
+                        <div className="text-[10px] text-muted-foreground font-mono">Badge: {m.badge}</div>
+                      </td>
+                      <td className="px-5 py-3">
+                        <div className="text-[11px] font-semibold text-foreground uppercase tracking-wider">{m.role}</div>
+                        <div className="mt-1 flex gap-2 items-center">
+                           <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold ${m.employment_status === 'Contract' ? 'bg-orange-500/10 text-orange-600' : 'bg-success/10 text-success'}`}>{m.employment_status || 'Permanent'}</span>
+                           {m.employment_status === 'Contract' && <span className="text-[10px] text-muted-foreground">{m.contract_duration || 0} Month(s) Plan</span>}
+                        </div>
+                      </td>
+                      <td className="px-5 py-3">
+                        <div className="text-xs"><span className="text-muted-foreground text-[10px] w-12 inline-block">Join:</span> {effectiveJoinDate ? format(new Date(effectiveJoinDate), 'dd MMM yyyy') : '--'}</div>
+                        {m.employment_status === 'Contract' && (
+                           <div className="text-xs mt-0.5"><span className="text-muted-foreground text-[10px] w-12 inline-block">Finish:</span> {m.finish_date ? format(new Date(m.finish_date), 'dd MMM yyyy') : '--'}</div>
+                        )}
+                        <div className="text-[10px] font-medium text-primary/80 mt-1 pt-1 border-t border-border/50">Ongoing: {workingDurationText}</div>
+                      </td>
+                      <td className="px-5 py-3 text-center">
+                         <span className={`px-2.5 py-1 rounded text-[11px] font-bold inline-block border ${
+                           isFinished ? 'bg-destructive/10 text-destructive border-destructive/20' : 
+                           isEndingSoon ? 'bg-warning/10 text-warning border-warning/20 dark:text-amber-400' : 
+                           m.employment_status === 'Permanent' ? 'bg-muted/50 text-muted-foreground border-border/50' : 
+                           'bg-background border-border text-foreground shadow-sm'
+                         }`}>
+                           {daysLeftText}
+                         </span>
+                      </td>
+                      <td className="px-5 py-3 text-right">
+                        {isManager && (
+                          <button onClick={() => { setEditingEmpStatus(m); setIsEmpStatusModalOpen(true); }} className="px-2 py-1 text-xs font-medium text-primary hover:bg-primary/10 rounded transition-colors" title="Update Status">Edit Entry</button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6 pb-8 h-[calc(100vh-6rem)] flex flex-col">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 flex-shrink-0">
@@ -782,6 +949,12 @@ export default function AttendancePage() {
           >
             <FileText className="w-4 h-4" /> Leave Management
           </button>
+          <button 
+            onClick={() => setActiveTab('employee-status')} 
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all ${activeTab === 'employee-status' ? 'bg-primary text-white shadow-sm' : 'text-muted-foreground hover:text-foreground hover:bg-surface border border-transparent hover:border-border'}`}
+          >
+            <Users className="w-4 h-4" /> Employee Status
+          </button>
         </div>
         
         {/* Content Area */}
@@ -798,12 +971,56 @@ export default function AttendancePage() {
               {activeTab === 'roster' && <RosterTab />}
               {activeTab === 'overtime' && <OtTab />}
               {activeTab === 'leave' && <LeaveTab />}
+              {activeTab === 'employee-status' && <EmployeeStatusTab />}
             </motion.div>
           </AnimatePresence>
         </div>
       </div>
       
       {/* Absolute Root Modals (Independent of Tabs) */}
+      <Modal isOpen={isEmpStatusModalOpen} onClose={() => { setIsEmpStatusModalOpen(false); setEditingEmpStatus(null); }} title={`Edit Status: ${editingEmpStatus?.name}`}>
+        <form onSubmit={handleEmpStatusSubmit} className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-foreground mb-1">Employment Status</label>
+              <select 
+                name="employment_status" 
+                defaultValue={editingEmpStatus?.employment_status || 'Permanent'} 
+                className="w-full bg-background border border-border rounded-lg px-3 py-2 focus:ring-1 focus:ring-primary outline-none"
+                id="employment_status_select"
+                onChange={(e) => {
+                   const fdInput = document.getElementById('finish_date_input') as HTMLInputElement;
+                   if (fdInput) {
+                      fdInput.required = e.target.value === 'Contract';
+                   }
+                }}
+              >
+                <option value="Permanent">Permanent</option>
+                <option value="Contract">Contract</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-foreground mb-1">Contract Duration (Months)</label>
+              <input type="number" name="contract_duration" min="0" defaultValue={editingEmpStatus?.contract_duration || 0} className="w-full bg-background border border-border rounded-lg px-3 py-2 focus:ring-1 focus:ring-primary outline-none" required />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-foreground mb-1">Join Date</label>
+              <input type="date" name="join_date" defaultValue={editingEmpStatus?.join_date || (editingEmpStatus?.created_at ? editingEmpStatus.created_at.split('T')[0] : '')} className="w-full bg-background border border-border rounded-lg px-3 py-2 focus:ring-1 focus:ring-primary outline-none" required />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-foreground mb-1">Finish Date {editingEmpStatus?.employment_status !== 'Permanent' && '*'}</label>
+              <input type="date" id="finish_date_input" name="finish_date" defaultValue={editingEmpStatus?.finish_date || ''} className="w-full bg-background border border-border rounded-lg px-3 py-2 focus:ring-1 focus:ring-primary outline-none" required={editingEmpStatus?.employment_status === 'Contract'} />
+            </div>
+          </div>
+          <div className="flex justify-end gap-3 pt-4 border-t border-border mt-6">
+            <button type="button" onClick={() => setIsEmpStatusModalOpen(false)} className="px-4 py-2 text-sm text-foreground bg-surface border border-border rounded-lg hover:bg-muted transition-colors">Cancel</button>
+            <button type="submit" className="px-4 py-2 text-sm text-white bg-primary rounded-lg shadow-sm hover:bg-primary/90 flex items-center justify-center transition-colors">Save Details</button>
+          </div>
+        </form>
+      </Modal>
+
       <Modal isOpen={isLeaveModalOpen} onClose={() => { setIsLeaveModalOpen(false); setEditingLeaveLog(null); }} title={editingLeaveLog ? "Edit Leave Request" : "Apply for Leave"}>
         <form onSubmit={handleLeaveSubmit} className="space-y-4">
           <div>

@@ -195,6 +195,10 @@ function initSchema(db: Database.Database) {
   try { db.exec('ALTER TABLE tasks ADD COLUMN attachments TEXT DEFAULT "[]"'); } catch {}
   try { db.exec('ALTER TABLE tickets ADD COLUMN resolution TEXT DEFAULT ""'); } catch {}
   try { db.exec('ALTER TABLE tickets ADD COLUMN attachments TEXT DEFAULT "[]"'); } catch {}
+  try { db.exec('ALTER TABLE members ADD COLUMN join_date TEXT DEFAULT ""'); } catch {}
+  try { db.exec('ALTER TABLE members ADD COLUMN finish_date TEXT DEFAULT ""'); } catch {}
+  try { db.exec('ALTER TABLE members ADD COLUMN employment_status TEXT DEFAULT "Permanent"'); } catch {}
+  try { db.exec('ALTER TABLE members ADD COLUMN contract_duration INTEGER DEFAULT 0'); } catch {}
 }
 
 /**

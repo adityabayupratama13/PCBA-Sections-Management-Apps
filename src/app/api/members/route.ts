@@ -31,11 +31,11 @@ export async function POST(req: NextRequest) {
     if (existing) return NextResponse.json({ error: 'Badge already exists' }, { status: 400 });
 
     const result = db.prepare(
-      'INSERT INTO members (name, badge, role, division, email, phone, password, status, grade, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+      'INSERT INTO members (name, badge, role, division, email, phone, password, status, grade, join_date, finish_date, employment_status, contract_duration, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
     ).run(
       body.name, body.badge, body.role || 'IT Support', body.division || 'IT Department',
       body.email || '', body.phone || '', body.password || 'Password123', body.status || 'Active',
-      body.grade || '', body.created_at || new Date().toISOString()
+      body.grade || '', body.join_date || '', body.finish_date || '', body.employment_status || 'Permanent', body.contract_duration || 0, body.created_at || new Date().toISOString()
     );
     db.prepare('INSERT INTO audit_logs (action, module, details, user_name) VALUES (?, ?, ?, ?)').run('Created', 'Team', `Added member: ${body.name}`, body.userName || 'System');
     return NextResponse.json({ id: result.lastInsertRowid });
@@ -54,21 +54,21 @@ export async function PUT(req: NextRequest) {
       const existing = db.prepare('SELECT id FROM members WHERE badge = ?').get(MASTER_BADGE) as { id: number } | undefined;
       if (existing) {
         db.prepare(
-          'UPDATE members SET name=?, role=?, division=?, email=?, phone=?, status=?, grade=?, created_at=? WHERE badge=?'
-        ).run(body.name, body.role, body.division, body.email || '', body.phone || '', body.status || 'Active', body.grade || '', body.created_at || new Date().toISOString(), MASTER_BADGE);
+          'UPDATE members SET name=?, role=?, division=?, email=?, phone=?, status=?, grade=?, join_date=?, finish_date=?, employment_status=?, contract_duration=?, created_at=? WHERE badge=?'
+        ).run(body.name, body.role, body.division, body.email || '', body.phone || '', body.status || 'Active', body.grade || '', body.join_date || '', body.finish_date || '', body.employment_status || 'Permanent', body.contract_duration || 0, body.created_at || new Date().toISOString(), MASTER_BADGE);
       } else {
         // Insert Master into DB so they have a real row
         db.prepare(
-          'INSERT INTO members (name, badge, role, division, email, phone, password, status, grade, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
-        ).run(body.name, MASTER_BADGE, body.role, body.division, body.email || '', body.phone || '', body.password || 'Giken@212', body.status || 'Active', body.grade || '', body.created_at || new Date().toISOString());
+          'INSERT INTO members (name, badge, role, division, email, phone, password, status, grade, join_date, finish_date, employment_status, contract_duration, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        ).run(body.name, MASTER_BADGE, body.role, body.division, body.email || '', body.phone || '', body.password || 'Giken@212', body.status || 'Active', body.grade || '', body.join_date || '', body.finish_date || '', body.employment_status || 'Permanent', body.contract_duration || 0, body.created_at || new Date().toISOString());
       }
       db.prepare('INSERT INTO audit_logs (action, module, details, user_name) VALUES (?, ?, ?, ?)').run('Updated', 'Team', `Updated master profile: ${body.name}`, body.userName || 'System');
       return NextResponse.json({ success: true });
     }
 
     db.prepare(
-      'UPDATE members SET name=?, badge=?, role=?, division=?, email=?, phone=?, password=?, status=?, grade=?, created_at=? WHERE id=?'
-    ).run(body.name, body.badge, body.role, body.division, body.email || '', body.phone || '', body.password || 'Password123', body.status || 'Active', body.grade || '', body.created_at || new Date().toISOString(), body.id);
+      'UPDATE members SET name=?, badge=?, role=?, division=?, email=?, phone=?, password=?, status=?, grade=?, join_date=?, finish_date=?, employment_status=?, contract_duration=?, created_at=? WHERE id=?'
+    ).run(body.name, body.badge, body.role, body.division, body.email || '', body.phone || '', body.password || 'Password123', body.status || 'Active', body.grade || '', body.join_date || '', body.finish_date || '', body.employment_status || 'Permanent', body.contract_duration || 0, body.created_at || new Date().toISOString(), body.id);
     db.prepare('INSERT INTO audit_logs (action, module, details, user_name) VALUES (?, ?, ?, ?)').run('Updated', 'Team', `Updated member: ${body.name}`, body.userName || 'System');
     return NextResponse.json({ success: true });
   } catch {

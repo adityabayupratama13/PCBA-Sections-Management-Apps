@@ -13,6 +13,10 @@ export interface Member {
   phone?: string;
   status: string;
   grade?: string;
+  join_date?: string;
+  finish_date?: string;
+  employment_status?: string;
+  contract_duration?: number;
   created_at?: string;
 }
 
