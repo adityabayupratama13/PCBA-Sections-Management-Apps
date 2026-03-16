@@ -1,6 +1,8 @@
 'use client';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { Users, Ticket, CheckSquare, Activity, Clock, BarChart3, AlertCircle, Briefcase, ArrowRight } from 'lucide-react';
+// @ts-ignore
+import anime from 'animejs';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
   PieChart, Pie, Cell, Legend
@@ -17,6 +19,7 @@ export default function DashboardPage() {
   const [workloads, setWorkloads] = useState<{ name: string; tasks: number }[]>([]);
   const [teamMembers, setTeamMembers] = useState<MemberItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     Promise.all([
@@ -58,6 +61,21 @@ export default function DashboardPage() {
         positions: pos.length,
       });
       setLoading(false);
+      
+      // Trigger entrance animation slightly after render
+      setTimeout(() => {
+        if (containerRef.current) {
+          anime({
+            targets: containerRef.current.querySelectorAll('.animate-enter'),
+            translateY: [20, 0],
+            opacity: [0, 1],
+            delay: anime.stagger(100),
+            easing: 'easeOutSpring(1, 80, 10, 0)',
+            duration: 1000
+          });
+        }
+      }, 50);
+
     }).catch(() => setLoading(false));
   }, []);
 
@@ -84,8 +102,8 @@ export default function DashboardPage() {
   if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>;
 
   return (
-    <div className="space-y-6 pb-8">
-      <div>
+    <div ref={containerRef} className="space-y-6 pb-8">
+      <div className="animate-enter opacity-0">
         <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
         <p className="text-muted-foreground mt-1">
           {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
@@ -101,7 +119,7 @@ export default function DashboardPage() {
           { label: 'Daily Logs', val: stats.logs, sub: 'All time', icon: <Activity className="w-5 h-5" />, cls: 'text-violet-400 bg-violet-500/10 border-violet-500/20' },
           { label: 'Positions', val: stats.positions, sub: 'Jabatan', icon: <Briefcase className="w-5 h-5" />, cls: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20' },
         ].map(s => (
-          <div key={s.label} className="rounded-2xl border p-4 flex items-center gap-3" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+          <div key={s.label} className="animate-enter opacity-0 rounded-2xl border p-4 flex items-center gap-3" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
             <div className={`p-2.5 rounded-xl border flex-shrink-0 ${s.cls}`}>{s.icon}</div>
             <div>
               <p className="text-xs text-muted-foreground">{s.label}</p>
@@ -114,7 +132,7 @@ export default function DashboardPage() {
 
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="rounded-2xl p-5 border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+        <div className="animate-enter opacity-0 rounded-2xl p-5 border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
           <h2 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-4"><BarChart3 className="w-4 h-4 text-primary" /> Task Status</h2>
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={taskBar} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
@@ -129,7 +147,7 @@ export default function DashboardPage() {
           </ResponsiveContainer>
         </div>
 
-        <div className="rounded-2xl p-5 border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+        <div className="animate-enter opacity-0 rounded-2xl p-5 border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
           <h2 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-4"><AlertCircle className="w-4 h-4 text-orange-400" /> Ticket Breakdown</h2>
           {ticketPie.length > 0 ? (
             <ResponsiveContainer width="100%" height={200}>
@@ -148,7 +166,7 @@ export default function DashboardPage() {
       {/* Workload + Team */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Workload Distribution */}
-        <div className="rounded-2xl p-5 border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+        <div className="animate-enter opacity-0 rounded-2xl p-5 border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
           <h2 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-4"><BarChart3 className="w-4 h-4 text-violet-400" /> Workload Distribution</h2>
           {workloads.length > 0 ? (
             <div className="space-y-3">
@@ -171,7 +189,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Team Members */}
-        <div className="rounded-2xl p-5 border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+        <div className="animate-enter opacity-0 rounded-2xl p-5 border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
           <h2 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-4"><Users className="w-4 h-4 text-primary" /> Team Members</h2>
           <div className="space-y-2 max-h-48 overflow-y-auto custom-scrollbar">
             {teamMembers.map((m, i) => (
@@ -195,7 +213,7 @@ export default function DashboardPage() {
 
       {/* Activity + Workflow Info */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2 rounded-2xl p-5 border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+        <div className="lg:col-span-2 animate-enter opacity-0 rounded-2xl p-5 border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
           <h2 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-4"><Clock className="w-4 h-4 text-primary" /> Recent Activity</h2>
           <div className="space-y-1.5 max-h-64 overflow-y-auto custom-scrollbar">
             {recentLogs.length === 0 && <p className="text-sm text-muted-foreground text-center py-6">No activity yet</p>}
@@ -214,7 +232,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Workflow Guide */}
-        <div className="rounded-2xl p-5 border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+        <div className="animate-enter opacity-0 rounded-2xl p-5 border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
           <h2 className="text-sm font-semibold text-foreground mb-4">📋 IT Workflow</h2>
           <div className="space-y-3">
             {[

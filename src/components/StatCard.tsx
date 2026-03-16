@@ -1,5 +1,7 @@
-import { ReactNode } from 'react';
+import { ReactNode, useEffect, useRef } from 'react';
 import { TrendingUp, TrendingDown } from 'lucide-react';
+// @ts-ignore
+import anime from 'animejs';
 
 interface StatCardProps {
   title: string;
@@ -22,6 +24,24 @@ const ACCENT_STYLES = {
 
 export function StatCard({ title, value, icon, trend, className = '', accent = 'blue' }: StatCardProps) {
   const styles = ACCENT_STYLES[accent];
+  const valueRef = useRef<HTMLHeadingElement>(null);
+
+  useEffect(() => {
+    // Only animate if value is a number
+    if (typeof value === 'number' && valueRef.current) {
+      anime({
+        targets: valueRef.current,
+        innerHTML: [0, value],
+        round: 1, // Round to integer
+        easing: 'easeOutExpo',
+        duration: 1500,
+        delay: 200 // slight delay for visual pop
+      });
+    } else if (valueRef.current) {
+      valueRef.current.innerHTML = String(value);
+    }
+  }, [value]);
+
   return (
     <div className={`relative overflow-hidden rounded-2xl p-6 group transition-all duration-300 hover:-translate-y-0.5 border ${styles.glow} ${className}`}
       style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}
@@ -36,7 +56,7 @@ export function StatCard({ title, value, icon, trend, className = '', accent = '
       <div className="relative flex justify-between items-start">
         <div className="flex-1">
           <p className="text-sm font-medium text-muted-foreground">{title}</p>
-          <h3 className="text-3xl font-bold text-foreground mt-2 tracking-tight">{value}</h3>
+          <h3 ref={valueRef} className="text-3xl font-bold text-foreground mt-2 tracking-tight">{value}</h3>
           {trend && (
             <div className="flex items-center gap-1.5 mt-2">
               {trend.isUp ? (

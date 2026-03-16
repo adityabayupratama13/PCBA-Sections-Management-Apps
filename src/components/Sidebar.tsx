@@ -8,6 +8,9 @@ import {
 import { useAuth } from '@/context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GikenLogo } from '@/components/GikenLogo';
+import { useEffect, useRef } from 'react';
+// @ts-ignore
+import anime from 'animejs';
 
 const NAV_ITEMS = [
   { label: 'Dashboard', href: '/', icon: LayoutDashboard },
@@ -31,6 +34,20 @@ interface SidebarProps {
 export function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
   const pathname = usePathname();
   const { role } = useAuth();
+  const navRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    if (navRef.current) {
+      anime({
+        targets: navRef.current.querySelectorAll('.nav-item'),
+        translateX: [-20, 0],
+        opacity: [0, 1],
+        delay: anime.stagger(50, { start: 100 }), // Cascade start
+        easing: 'easeOutElastic(1, .8)',
+        duration: 800
+      });
+    }
+  }, []);
 
   const SidebarContent = (
     <div className="h-full flex flex-col w-64 glass-sidebar">
@@ -58,7 +75,7 @@ export function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
       </div>
 
       {/* Navigation */}
-      <nav id="sidebar-nav" className="flex-1 overflow-y-auto custom-scrollbar px-3 pb-4 space-y-0.5">
+      <nav ref={navRef} id="sidebar-nav" className="flex-1 overflow-y-auto custom-scrollbar px-3 pb-4 space-y-0.5">
         {NAV_ITEMS.map((item) => {
           const isActive = pathname === item.href;
           const Icon = item.icon;
@@ -71,7 +88,7 @@ export function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={() => setIsOpen(false)}
-                className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all group text-muted-foreground hover:text-primary hover:bg-primary/8"
+                className="nav-item opacity-0 flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all group text-muted-foreground hover:text-primary hover:bg-primary/8"
               >
                 <span className="flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center bg-surface group-hover:bg-primary/10 transition-colors border border-sidebar-border group-hover:border-primary/20">
                   <Icon className="w-4 h-4" />
@@ -88,7 +105,7 @@ export function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
               href={item.href}
               prefetch={false}
               onClick={() => setIsOpen(false)}
-              className={`relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all group ${
+              className={`nav-item opacity-0 relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all group ${
                 isActive
                   ? 'text-primary'
                   : 'text-muted-foreground hover:text-foreground hover:bg-surface'
