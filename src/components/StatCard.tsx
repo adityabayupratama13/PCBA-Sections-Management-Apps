@@ -1,6 +1,5 @@
 import { ReactNode, useEffect, useRef } from 'react';
 import { TrendingUp, TrendingDown } from 'lucide-react';
-// @ts-ignore
 import anime from 'animejs';
 
 interface StatCardProps {

@@ -804,7 +804,7 @@ export default function AttendancePage() {
         months += 12;
       }
       
-      let parts = [];
+      const parts: string[] = [];
       if (years > 0) parts.push(`${years} Year${years > 1 ? 's' : ''}`);
       if (months > 0) parts.push(`${months} Month${months > 1 ? 's' : ''}`);
       if (days > 0 || parts.length === 0) parts.push(`${days} Day${days !== 1 ? 's' : ''}`);

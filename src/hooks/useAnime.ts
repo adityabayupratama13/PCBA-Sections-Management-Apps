@@ -1,5 +1,4 @@
 import { useEffect, useRef } from 'react';
-// @ts-ignore
 import anime from 'animejs';
 
 interface UseAnimeProps {

@@ -1,7 +1,6 @@
 'use client';
 import { useEffect, useState, useRef } from 'react';
 import { Users, Ticket, CheckSquare, Activity, Clock, BarChart3, AlertCircle, Briefcase, ArrowRight } from 'lucide-react';
-// @ts-ignore
 import anime from 'animejs';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,

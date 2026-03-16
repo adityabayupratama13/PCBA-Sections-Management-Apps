@@ -9,7 +9,6 @@ import { useAuth } from '@/context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { GikenLogo } from '@/components/GikenLogo';
 import { useEffect, useRef } from 'react';
-// @ts-ignore
 import anime from 'animejs';
 
 const NAV_ITEMS = [
