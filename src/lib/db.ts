@@ -172,6 +172,19 @@ function initSchema(db: Database.Database) {
       last_accrual_month TEXT DEFAULT ''
     );
 
+    CREATE TABLE IF NOT EXISTS articles (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      title TEXT NOT NULL,
+      content TEXT DEFAULT '',
+      author TEXT NOT NULL,
+      category TEXT DEFAULT 'General',
+      tags TEXT DEFAULT '[]',
+      views INTEGER DEFAULT 0,
+      likes INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT (datetime('now')),
+      updated_at TEXT DEFAULT (datetime('now'))
+    );
+
     CREATE INDEX IF NOT EXISTS idx_tickets_status ON tickets(status);
     CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
     CREATE INDEX IF NOT EXISTS idx_tasks_assignee ON tasks(assignee);
