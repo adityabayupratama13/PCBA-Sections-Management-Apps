@@ -18,6 +18,7 @@ export interface Member {
   employment_status?: string;
   contract_duration?: number;
   created_at?: string;
+  photo_url?: string;
 }
 
 export interface AuditLog {

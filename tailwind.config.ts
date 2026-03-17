@@ -79,6 +79,12 @@ const config: Config = {
       },
     },
   },
+  safelist: [
+    // PhotoAvatar size classes
+    'w-9','h-9','w-16','h-16','w-24','h-24','w-32','h-32',
+    'text-sm','text-xl','text-3xl','text-4xl',
+    'ring-2','ring-[3px]',
+  ],
   plugins: [],
 };
 export default config;

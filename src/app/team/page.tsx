@@ -1,15 +1,16 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { Plus, Search, Edit2, Trash2, Eye, EyeOff, Shield, ExternalLink } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { DataTable } from '@/components/DataTable';
 import { Modal, ConfirmDialog } from '@/components/Modal';
+import PhotoAvatar from '@/components/PhotoAvatar';
 import { toast } from 'sonner';
 import { useAuth, type Member } from '@/context/AuthContext';
 import Link from 'next/link';
 
 interface Position { id: number; name: string; description: string; }
 
-// Color by role hash
 function roleBadgeStyle(role: string): string {
   const p = [
     'bg-violet-500/15 text-violet-400 border-violet-500/25',
@@ -43,6 +44,8 @@ export default function TeamPage() {
   const [deleteTarget, setDeleteTarget] = useState<Member | null>(null);
   const [viewingMember, setViewingMember] = useState<Member | null>(null);
   const [showPw, setShowPw] = useState(false);
+  // Pending photo_url while editing (not yet saved)
+  const [pendingPhoto, setPendingPhoto] = useState<string | null>(null);
 
   const getDescriptionsList = (descStr?: string): { id: number, text: string }[] => {
     if (!descStr) return [];
@@ -77,9 +80,11 @@ export default function TeamPage() {
   });
 
   const openAddModal = () => {
-    setEditingMember(null); setShowPw(false); setIsModalOpen(true);
+    setEditingMember(null); setPendingPhoto(null); setShowPw(false); setIsModalOpen(true);
   };
-  const openEditModal = (m: Member) => { setEditingMember(m); setShowPw(false); setIsModalOpen(true); };
+  const openEditModal = (m: Member) => {
+    setEditingMember(m); setPendingPhoto(null); setShowPw(false); setIsModalOpen(true);
+  };
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
@@ -92,7 +97,7 @@ export default function TeamPage() {
     e.preventDefault();
     const fd = new FormData(e.target as HTMLFormElement);
     const pw = fd.get('password') as string;
-    const data = {
+    const data: Omit<Member, 'id'> = {
       name: (fd.get('name') as string).trim(),
       badge: (fd.get('badge') as string).trim(),
       password: pw || editingMember?.password || '',
@@ -103,6 +108,7 @@ export default function TeamPage() {
       phone: (fd.get('phone') as string || '').trim(),
       grade: fd.get('grade') as string || '',
       created_at: (fd.get('joinDate') as string) || editingMember?.created_at || new Date().toISOString(),
+      photo_url: pendingPhoto ?? editingMember?.photo_url ?? undefined,
     };
     if (!data.name || !data.badge) { toast.error('Name and Badge required'); return; }
     const dup = allMembers.find(m => m.badge === data.badge && m.id !== editingMember?.id);
@@ -123,6 +129,15 @@ export default function TeamPage() {
     }
   };
 
+  // Upload photo from view modal → save directly
+  const handleViewModalUpload = async (url: string) => {
+    if (!viewingMember) return;
+    const updated = { ...viewingMember, photo_url: url };
+    await updateMember(updated);
+    setViewingMember(updated);
+    toast.success('Photo updated!');
+  };
+
   const inputClass = "w-full bg-gray-50 dark:bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all";
 
   const columns = [
@@ -130,13 +145,9 @@ export default function TeamPage() {
       header: 'Member',
       accessor: (m: Member) => (
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary/30 to-secondary/30 flex items-center justify-center text-primary font-bold text-sm border border-primary/20 flex-shrink-0">
-            {m.name.charAt(0).toUpperCase()}
-          </div>
+          <PhotoAvatar name={m.name} photoUrl={m.photo_url} size="sm" />
           <div>
-            <div className="font-semibold text-foreground flex items-center gap-1.5">
-              {m.name}
-            </div>
+            <div className="font-semibold text-foreground">{m.name}</div>
           </div>
         </div>
       )
@@ -197,7 +208,7 @@ export default function TeamPage() {
 
       <DataTable columns={columns} data={filtered} keyExtractor={m => m.id} onRowClick={m => setViewingMember(m)} />
 
-      {/* Profile/Job Details Modal */}
+      {/* ── Profile View Modal ── */}
       <Modal isOpen={!!viewingMember} onClose={() => setViewingMember(null)} title="Member Profile & Responsibilities" maxWidth="max-w-4xl">
         {viewingMember && (() => {
           const positionData = positions.find(p => p.name === viewingMember.role);
@@ -205,21 +216,27 @@ export default function TeamPage() {
 
           return (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pb-2">
-              {/* Left Column: Personal Member Details */}
+              {/* Left: Personal */}
               <div className="flex flex-col gap-4">
                 <div className="p-4 rounded-xl border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-4">
-                      <div className="w-14 h-14 rounded-full bg-gradient-to-br from-primary/30 to-secondary/30 flex items-center justify-center text-primary font-bold text-xl border border-primary/20 flex-shrink-0 shadow-sm">
-                        {viewingMember.name.charAt(0).toUpperCase()}
-                      </div>
-                      <div>
-                        <h3 className="text-lg font-bold text-foreground leading-tight">{viewingMember.name}</h3>
-                        <p className="text-xs text-muted-foreground font-mono mt-0.5">{viewingMember.badge}</p>
-                      </div>
+                  <div className="flex flex-col items-center gap-3 mb-4">
+                    {/* Large avatar with upload */}
+                    <div className="relative">
+                      <PhotoAvatar
+                        name={viewingMember.name}
+                        photoUrl={viewingMember.photo_url}
+                        size="xl"
+                        canUpload
+                        onUploaded={handleViewModalUpload}
+                      />
+                    </div>
+                    <div className="text-center">
+                      <h3 className="text-lg font-bold text-foreground leading-tight">{viewingMember.name}</h3>
+                      <p className="text-xs text-muted-foreground font-mono mt-0.5">{viewingMember.badge}</p>
+                      <p className="text-[11px] text-muted-foreground/60 mt-1">Click avatar to upload photo</p>
                     </div>
                   </div>
-                  
+
                   <div className="space-y-3 pt-4 border-t" style={{ borderColor: 'var(--border)' }}>
                     <div>
                       <span className="block text-xs text-muted-foreground uppercase tracking-wider mb-1">Role / Job Title</span>
@@ -256,13 +273,13 @@ export default function TeamPage() {
                     )}
                     <div>
                       <span className="block text-xs text-muted-foreground uppercase tracking-wider mb-1">Join Date</span>
-                      <span className="text-sm text-foreground">{new Date(viewingMember.created_at || new Date()).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric'})}</span>
+                      <span className="text-sm text-foreground">{new Date(viewingMember.created_at || new Date()).toLocaleDateString('id-ID', { year: 'numeric', month: 'long', day: 'numeric' })}</span>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* Right Column: Job Responsibilities (Read Only view sourced from Positions) */}
+              {/* Right: Responsibilities */}
               <div className="md:col-span-2 space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b pb-3" style={{ borderColor: 'var(--border)' }}>
                   <h3 className="text-base font-semibold text-foreground">Job Scope & Responsibilities</h3>
@@ -270,7 +287,6 @@ export default function TeamPage() {
                     <Edit2 className="w-3.5 h-3.5" /> Edit in Positions Master
                   </Link>
                 </div>
-                
                 {list.length === 0 ? (
                   <div className="py-12 text-center text-muted-foreground border border-dashed rounded-xl" style={{ borderColor: 'var(--border)' }}>
                     No job descriptions assigned for <strong className="text-foreground">{viewingMember.role}</strong> yet.
@@ -280,7 +296,7 @@ export default function TeamPage() {
                     <div className="max-h-[50vh] overflow-y-auto divide-y" style={{ borderColor: 'var(--border)' }}>
                       {list.map((item, idx) => (
                         <div key={item.id || idx} className="flex items-start gap-4 p-4 hover:bg-muted/30 transition-colors">
-                          <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold border border-primary/20 mt-0.5">{idx+1}</span>
+                          <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs font-bold border border-primary/20 mt-0.5">{idx + 1}</span>
                           <p className="text-sm text-foreground/90 leading-relaxed pt-1">{item.text}</p>
                         </div>
                       ))}
@@ -300,9 +316,24 @@ export default function TeamPage() {
         <ExternalLink className="w-3.5 h-3.5 text-muted-foreground ml-auto" />
       </Link>
 
-      {/* Add/Edit Modal */}
+      {/* ── Add/Edit Modal ── */}
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={editingMember ? 'Edit Member' : 'Register New Member'}>
         <form onSubmit={handleSave} className="space-y-4 shadow-sm pb-1 max-h-[75vh] overflow-y-auto px-1 custom-scrollbar">
+          
+          {/* Photo upload at top of edit modal */}
+          <div className="flex justify-center pt-2 pb-1">
+            <div className="flex flex-col items-center gap-2">
+              <PhotoAvatar
+                name={editingMember?.name || 'N'}
+                photoUrl={pendingPhoto ?? editingMember?.photo_url}
+                size="lg"
+                canUpload
+                onUploaded={url => setPendingPhoto(url)}
+              />
+              <span className="text-xs text-muted-foreground">Click or drag to set photo</span>
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div><label className="block text-sm font-medium text-muted-foreground mb-1.5">Full Name *</label>
               <input name="name" required defaultValue={editingMember?.name} className={inputClass} /></div>
@@ -345,21 +376,9 @@ export default function TeamPage() {
             <div><label className="block text-sm font-medium text-muted-foreground mb-1.5">Grade / Level</label>
               <select name="grade" defaultValue={editingMember?.grade || ''} className={inputClass + ' cursor-pointer'}>
                 <option value="">— No Grade —</option>
-                <optgroup label="Manager">
-                  <option value="M2">M2</option>
-                  <option value="M3">M3</option>
-                </optgroup>
-                <optgroup label="Supervisor">
-                  <option value="S1">S1</option>
-                  <option value="S2">S2</option>
-                  <option value="S3">S3</option>
-                </optgroup>
-                <optgroup label="Leader">
-                  <option value="L1">L1</option>
-                  <option value="L2">L2</option>
-                  <option value="L3">L3</option>
-                  <option value="L4">L4</option>
-                </optgroup>
+                <optgroup label="Manager"><option value="M2">M2</option><option value="M3">M3</option></optgroup>
+                <optgroup label="Supervisor"><option value="S1">S1</option><option value="S2">S2</option><option value="S3">S3</option></optgroup>
+                <optgroup label="Leader"><option value="L1">L1</option><option value="L2">L2</option><option value="L3">L3</option><option value="L4">L4</option></optgroup>
               </select></div>
             <div><label className="block text-sm font-medium text-muted-foreground mb-1.5">Email</label>
               <input name="email" type="email" defaultValue={editingMember?.email} className={inputClass} /></div>
@@ -384,6 +403,9 @@ export default function TeamPage() {
 
       <ConfirmDialog isOpen={!!deleteTarget} onClose={() => setDeleteTarget(null)} onConfirm={handleDelete}
         title="Remove Member" message={`Remove "${deleteTarget?.name}" (${deleteTarget?.badge})? They will lose login access.`} />
+
+      {/* Suppress unused AnimatePresence warning */}
+      <AnimatePresence />
     </div>
   );
 }
