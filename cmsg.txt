@@ -1,0 +1,6 @@
+fix: restore job descriptions from SQLite, column LONGTEXT
+
+- description column was VARCHAR(255) — truncated JSON at 255 chars
+- Altered positions.description to LONGTEXT
+- Re-imported all 4 position descriptions from original SQLite backup
+- JSON.parse now works correctly, numbered list renders properly
