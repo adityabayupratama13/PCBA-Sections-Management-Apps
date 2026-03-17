@@ -52,9 +52,6 @@ export default function TasksPage() {
   const [taskComments, setTaskComments] = useState<Comment[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    setFilterDate(new Date().toISOString().split('T')[0]);
-  }, []);
 
   useEffect(() => {
     if (tasks.length > 0 && typeof window !== 'undefined') {
@@ -268,22 +265,30 @@ export default function TasksPage() {
 
       {/* Date Filter */}
       <div className="flex bg-surface p-3 rounded-lg border border-border items-center gap-3">
-        <label className="text-sm font-medium text-foreground whitespace-nowrap">Daily Filter :</label>
+        <label className="text-sm font-medium text-foreground whitespace-nowrap">Time Filter :</label>
+
+        <button 
+          onClick={() => setFilterDate('')} 
+          className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${!filterDate ? 'bg-primary text-primary-foreground shadow-sm' : 'bg-transparent text-muted-foreground hover:bg-secondary'}`}
+        >
+          All Data
+        </button>
+
+        <div className="h-4 w-px bg-border mx-1" />
+
         <div className="flex items-center gap-1">
           <button onClick={() => navigateDate(-1)} className="p-1 hover:bg-secondary rounded text-muted-foreground transition-colors"><ChevronLeft className="w-4 h-4" /></button>
           <input 
             type="date" 
             value={filterDate} 
             onChange={e => setFilterDate(e.target.value)} 
-            className="bg-background border border-border rounded-md px-2 py-1 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+            className={`bg-background border border-border rounded-md px-2 py-1 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary transition-all ${filterDate ? 'ring-1 ring-primary border-primary' : ''}`}
           />
           <button onClick={() => navigateDate(1)} className="p-1 hover:bg-secondary rounded text-muted-foreground transition-colors"><ChevronRight className="w-4 h-4" /></button>
         </div>
-        {filterDate && (
-          <button onClick={() => setFilterDate('')} className="text-xs text-muted-foreground hover:text-foreground">Clear</button>
-        )}
+        
         <p className="text-xs text-muted-foreground ml-auto hidden sm:block">
-          Show tasks active/due on this day, overriding rollovers
+          {filterDate ? "Showing tasks active/due on this particular date." : "Showing all tasks across all dates."}
         </p>
       </div>
 
