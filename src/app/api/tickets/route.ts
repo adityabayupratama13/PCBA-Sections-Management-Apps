@@ -1,11 +1,54 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb } from '@/lib/db';
+import type { Database } from 'better-sqlite3';
 
-// Statuses are now unified: Backlog, In Progress, Review, Done
-// Direct pass-through since ticket and task share the same labels
 function ticketToTaskStatus(ticketStatus: string): string {
   return ticketStatus;
+}
+
+// Rules Engine Processor
+async function processRules(db: Database, triggerEvent: string, itemData: Record<string, unknown>) {
+  try {
+    const rules = db.prepare('SELECT * FROM rules WHERE is_active = 1 AND trigger_event = ?').all(triggerEvent) as Record<string, unknown>[];
+    
+    for (const rule of rules) {
+      // Evaluate Condition
+      const conditionField = String(rule.condition_field);
+      const fieldVal = String(itemData[conditionField] || '').toLowerCase();
+      const targetVal = String(rule.condition_value).toLowerCase();
+      
+      if (fieldVal === targetVal) {
+        // Condition matches! Execute Action
+        if (rule.action_type === 'assign_to') {
+          // Find linked task and reassign
+          db.prepare("UPDATE tasks SET assignee = ? WHERE ticket_id = ?").run(rule.action_payload, itemData.id);
+          db.prepare("INSERT INTO audit_logs (action, module, details, user_name) VALUES (?, ?, ?, ?)").run('Automation', 'Rules', `[${rule.name}] Auto-assigned task to ${rule.action_payload}`, 'System');
+        } 
+        else if (rule.action_type === 'set_priority') {
+          db.prepare("UPDATE tickets SET priority = ? WHERE id = ?").run(rule.action_payload, itemData.id);
+          const taskPriority = rule.action_payload === 'Critical' ? 'High' : rule.action_payload;
+          db.prepare("UPDATE tasks SET priority = ? WHERE ticket_id = ?").run(taskPriority, itemData.id);
+          db.prepare("INSERT INTO audit_logs (action, module, details, user_name) VALUES (?, ?, ?, ?)").run('Automation', 'Rules', `[${rule.name}] Auto-set priority to ${rule.action_payload}`, 'System');
+        }
+        else if (rule.action_type === 'add_comment') {
+          // Fetch existing comments, append new one
+          const current = db.prepare('SELECT comments FROM tickets WHERE id=?').get(itemData.id) as { comments: string } | undefined;
+          const comments = JSON.parse(current?.comments || '[]');
+          comments.push({ id: Date.now().toString(), author: 'System Bot', text: rule.action_payload, timestamp: new Date().toISOString() });
+          
+          db.prepare("UPDATE tickets SET comments = ? WHERE id = ?").run(JSON.stringify(comments), itemData.id);
+          db.prepare("UPDATE tasks SET comments = ? WHERE ticket_id = ?").run(JSON.stringify(comments), itemData.id);
+          db.prepare("INSERT INTO audit_logs (action, module, details, user_name) VALUES (?, ?, ?, ?)").run('Automation', 'Rules', `[${rule.name}] Auto-commented on ticket`, 'System');
+        }
+        else if (rule.action_type === 'generate_alert') {
+          db.prepare("INSERT INTO audit_logs (action, module, details, user_name) VALUES (?, ?, ?, ?)").run('CRITICAL ALERT', 'Rules', `🚨 [${rule.name}] ${rule.action_payload} (Ticket: ${itemData.id})`, 'System');
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Automation Engine Error:', err);
+  }
 }
 
 
@@ -43,8 +86,13 @@ export async function POST(req: NextRequest) {
     );
     db.prepare('INSERT INTO audit_logs (action, module, details, user_name) VALUES (?, ?, ?, ?)')
       .run('Created', 'Tickets', `Created ticket: ${id} — ${body.title} (auto-created task + daily log)`, body.userName || 'System');
+      
+    // Trigger Automation Engine
+    await processRules(db, 'ticket_created', { id, ...body });
+
     return NextResponse.json({ id });
-  } catch {
+  } catch (error) {
+    console.error(error);
     return NextResponse.json({ error: 'Failed to create ticket' }, { status: 500 });
   }
 }
@@ -71,6 +119,9 @@ export async function PUT(req: NextRequest) {
 
   db.prepare('INSERT INTO audit_logs (action, module, details, user_name) VALUES (?, ?, ?, ?)')
     .run('Updated', 'Tickets', `Updated ticket: ${body.id} — ${body.title} (${body.status})`, body.userName || 'System');
+
+  // Trigger Automation Engine
+  await processRules(db, 'ticket_updated', body);
 
   return NextResponse.json({ success: true });
 }

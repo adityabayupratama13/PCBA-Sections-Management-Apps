@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, Users, FolderKanban, Monitor, Tickets,
-  CalendarDays, CalendarClock, History, CheckSquare, X, Briefcase, ExternalLink, BookOpen
+  CalendarDays, CalendarClock, History, CheckSquare, X, Briefcase, ExternalLink, BookOpen, Zap
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -20,6 +20,7 @@ const NAV_ITEMS = [
   { label: 'Tasks', href: '/tasks', icon: CheckSquare },
   { label: 'Schedule', href: '/schedule', icon: CalendarClock },
   { label: 'Projects', href: '/projects', icon: FolderKanban },
+  { label: 'Automations', href: '/automations', icon: Zap },
   { label: 'Knowledge Base', href: '/knowledge', icon: BookOpen },
   { label: 'Assets', href: '/assets', icon: Monitor, external: 'http://10.0.2.212:3001' },
   { label: 'Daily Log', href: '/daily', icon: CalendarDays },
