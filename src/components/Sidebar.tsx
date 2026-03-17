@@ -22,7 +22,7 @@ const NAV_ITEMS = [
   { label: 'Projects', href: '/projects', icon: FolderKanban },
   // { label: 'Automations', href: '/automations', icon: Zap },
   { label: 'Knowledge Base', href: '/knowledge', icon: BookOpen },
-  { label: 'Assets', href: '/assets', icon: Monitor, external: 'http://10.0.2.212:3001' },
+  { label: 'Assets', href: '/assets', icon: Monitor, external: 'http://113.212.162.101:3001/' },
   { label: 'Daily Log', href: '/daily', icon: CalendarDays },
   { label: 'Audit Log', href: '/audit', icon: History },
 ];
