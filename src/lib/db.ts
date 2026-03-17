@@ -198,6 +198,16 @@ function initSchema(db: Database.Database) {
       updated_at TEXT DEFAULT (datetime('now'))
     );
 
+    CREATE TABLE IF NOT EXISTS time_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      task_id INTEGER NOT NULL,
+      member_name TEXT NOT NULL,
+      start_time TEXT NOT NULL,
+      end_time TEXT,
+      duration_seconds INTEGER DEFAULT 0,
+      notes TEXT DEFAULT ''
+    );
+
     CREATE INDEX IF NOT EXISTS idx_tickets_status ON tickets(status);
     CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
     CREATE INDEX IF NOT EXISTS idx_tasks_assignee ON tasks(assignee);
@@ -231,6 +241,7 @@ function initSchema(db: Database.Database) {
   try { db.exec('ALTER TABLE members ADD COLUMN finish_date TEXT DEFAULT ""'); } catch {}
   try { db.exec('ALTER TABLE members ADD COLUMN employment_status TEXT DEFAULT "Permanent"'); } catch {}
   try { db.exec('ALTER TABLE members ADD COLUMN contract_duration INTEGER DEFAULT 0'); } catch {}
+  try { db.exec('ALTER TABLE tasks ADD COLUMN time_spent INTEGER DEFAULT 0'); } catch {}
 }
 
 /**

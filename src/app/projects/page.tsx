@@ -1,6 +1,6 @@
 'use client';
 import { useState, useMemo, useEffect } from 'react';
-import { Plus, FolderKanban, TrendingUp, CheckCircle2, Edit2, Trash2, Link2, ListChecks, CalendarDays, Zap } from 'lucide-react';
+import { Plus, FolderKanban, TrendingUp, CheckCircle2, Edit2, Trash2, Link2, ListChecks, CalendarDays, Zap, Activity, Users } from 'lucide-react';
 import { GanttRow } from '@/components/GanttRow';
 import { Modal, ConfirmDialog } from '@/components/Modal';
 import { toast } from 'sonner';
@@ -70,12 +70,18 @@ export default function ProjectsPage() {
   const [expandedProject, setExpandedProject] = useState<number | null>(null);
   const [allTasks, setAllTasks] = useState<TaskItem[]>([]);
   const [allSchedules, setAllSchedules] = useState<ScheduleItem[]>([]);
+  const [analytics, setAnalytics] = useState<{
+    workload: { name: string; hours: number }[];
+    heatmap: { log_date: string; count: number; seconds: number }[];
+    projectStats: { project_ref: string; total_time: number }[];
+  } | null>(null);
   const { members } = useAuth();
 
   // Fetch tasks & schedules from DB
   useEffect(() => {
     fetch('/api/tasks').then(r => r.json()).then(setAllTasks).catch(() => {});
     fetch('/api/schedules').then(r => r.json()).then(setAllSchedules).catch(() => {});
+    fetch('/api/analytics').then(r => r.json()).then(setAnalytics).catch(() => {});
   }, [isModalOpen, expandedProject]);
 
   const getAutoProgress = (project: Project) => {
@@ -343,6 +349,94 @@ export default function ProjectsPage() {
                 );
               })}
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Analytics Section */}
+      <div className="mt-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Workload Leaderboard */}
+        <div className="col-span-1 rounded-2xl border p-5 flex flex-col" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+          <h2 className="font-bold text-lg text-foreground mb-4 flex items-center gap-2">
+            <Users className="w-5 h-5 text-primary" /> Team Workload
+          </h2>
+          <div className="flex-1 space-y-3">
+            {analytics?.workload.map((w, i) => (
+              <div key={w.name} className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className={`w-6 h-6 rounded flex items-center justify-center text-xs font-bold ${i === 0 ? 'bg-amber-500/20 text-amber-500' : 'bg-secondary text-muted-foreground'}`}>
+                    {i + 1}
+                  </div>
+                  <span className="text-sm font-medium text-foreground">{w.name}</span>
+                </div>
+                <span className="text-sm font-bold text-primary">{w.hours}h</span>
+              </div>
+            ))}
+            {(!analytics?.workload || analytics.workload.length === 0) && (
+              <p className="text-sm text-muted-foreground text-center py-4">No time logged yet.</p>
+            )}
+          </div>
+        </div>
+
+        {/* Heatmap Activity */}
+        <div className="col-span-1 lg:col-span-2 rounded-2xl border p-5 flex flex-col" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+          <h2 className="font-bold text-lg text-foreground mb-4 flex items-center gap-2">
+            <Activity className="w-5 h-5 text-success" /> 30-Day Activity Heatmap
+          </h2>
+          <div className="flex flex-wrap gap-1 mt-2">
+            {(() => {
+              const days = [];
+              const today = new Date();
+              today.setHours(0, 0, 0, 0); // Normalize to local midnight
+              
+              // Local utility to format YYYY-MM-DD
+              const formatYMD = (d: Date) => {
+                const year = d.getFullYear();
+                const month = String(d.getMonth() + 1).padStart(2, '0');
+                const day = String(d.getDate()).padStart(2, '0');
+                return `${year}-${month}-${day}`;
+              };
+
+              // Make a map of dates from analytics for O(1) lookup
+              const heatmapMap = new Map();
+              analytics?.heatmap?.forEach(item => {
+                heatmapMap.set(item.log_date, item);
+              });
+
+              for (let i = 29; i >= 0; i--) {
+                const d = new Date(today);
+                d.setDate(d.getDate() - i);
+                const dateStr = formatYMD(d);
+                const stat = heatmapMap.get(dateStr);
+                
+                let opacity = 'opacity-10';
+                if (stat) {
+                  if (stat.seconds > 14400) opacity = 'opacity-100'; // > 4 hours
+                  else if (stat.seconds > 7200) opacity = 'opacity-80'; // > 2 hours
+                  else if (stat.seconds > 3600) opacity = 'opacity-60'; // > 1 hour
+                  else opacity = 'opacity-40';
+                }
+
+                days.push(
+                  <div 
+                    key={dateStr}
+                    title={`${dateStr}: ${stat ? Math.round(stat.seconds / 60) + ' min logged' : '0 min'}`}
+                    className={`w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 rounded overflow-hidden bg-success ${opacity} transition-opacity hover:opacity-100 cursor-help ring-1 ring-inset ring-success/20`}
+                  />
+                );
+              }
+              return days;
+            })()}
+          </div>
+          <div className="mt-4 flex items-center justify-end gap-2 text-[10px] text-muted-foreground font-medium">
+            <span>Less</span>
+            <div className="flex gap-1">
+              <div className="w-3 h-3 rounded bg-success opacity-10"></div>
+              <div className="w-3 h-3 rounded bg-success opacity-40"></div>
+              <div className="w-3 h-3 rounded bg-success opacity-80"></div>
+              <div className="w-3 h-3 rounded bg-success opacity-100"></div>
+            </div>
+            <span>More</span>
           </div>
         </div>
       </div>

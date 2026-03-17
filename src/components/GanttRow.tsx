@@ -33,12 +33,15 @@ export function GanttRow({ name, pic, startDate, endDate, progress, status, glob
       onMouseEnter={e => { e.currentTarget.style.background = 'var(--muted)'; }}
       >
         <div className="w-[30%] shrink-0 pr-4 flex items-center justify-between pl-2 overflow-hidden z-10 bg-inherit z-20 sticky left-0">
-          <div className="flex flex-col overflow-hidden">
+          <div className="flex flex-col overflow-hidden pr-2">
             <span className="text-sm font-semibold text-foreground truncate group-hover:text-primary transition-colors">{name}</span>
-            <span className="text-xs text-muted-foreground truncate mt-0.5">PIC: {pic}</span>
+            <span className="text-[10px] text-muted-foreground truncate mt-0.5 uppercase tracking-wide">PIC: {pic}</span>
           </div>
-          <div className="ml-2 flex-shrink-0 px-2 py-0.5 rounded-md border text-xs font-bold" style={{ color: fill, borderColor: `${fill}40`, backgroundColor: `${fill}10` }}>
-            {progress}%
+          <div className="ml-2 flex flex-col items-end gap-1 shrink-0">
+            <span className="px-1.5 py-0.5 rounded-sm border text-[9px] font-bold uppercase tracking-wider" style={{ color: fill, borderColor: `${fill}40`, backgroundColor: `${fill}10` }}>
+              {status}
+            </span>
+            <span className="text-[11px] font-semibold text-foreground">{progress}%</span>
           </div>
         </div>
           <div className="flex-between absolute inset-0 left-[30%] right-[16px] pointer-events-none opacity-5">
@@ -46,31 +49,25 @@ export function GanttRow({ name, pic, startDate, endDate, progress, status, glob
           </div>
         
         {/* Timeline track */}
-        <div className="flex-1 relative h-10 overflow-hidden flex items-center pr-2">
+        <div className="flex-1 relative h-12 flex items-center pr-2">
            <div 
-             className="absolute h-8 rounded-md overflow-hidden shadow-sm transition-all hover:brightness-110 flex px-2 group/block cursor-default"
+             className="absolute h-8 rounded shadow-sm transition-all hover:brightness-110 flex items-center px-2 cursor-default"
              style={{ 
                left: `${leftPercent}%`, 
-               width: `calc(${widthPercent}% - 4px)`, 
-               minWidth: '60px', /* Increased min-width to accommodate both percentage and dates if small */
-               background: `${fill}25`, 
-               border: `1px solid ${fill}50`,
+               width: `max(70px, calc(${widthPercent}% - 4px))`, 
+               background: `${fill}15`, 
+               border: `1px solid ${fill}40`,
+               borderLeft: `4px solid ${fill}`,
                zIndex: 10
              }}
-             title={`${name} (${progress}%)\nStart: ${startDate.toLocaleDateString('en-US')}\nEnd: ${endDate.toLocaleDateString('en-US')}`}
+             title={`${name} (${status} - ${progress}%)\nStart: ${startDate.toLocaleDateString()}\nEnd: ${endDate.toLocaleDateString()}`}
            >
-              {/* Internal progress bar */}
-              <div 
-                className="absolute top-0 bottom-0 left-0 transition-all opacity-40 z-0" 
-                style={{ width: `${progress}%`, background: fill }} 
-              />
-              
               {/* Text labels container */}
-              <div className="relative z-10 flex items-center justify-between w-full opacity-90 px-1">
-                <span className="text-[9px] font-medium tracking-wide drop-shadow-sm truncate pr-1" style={{ color: fill }}>
+              <div className="flex items-center justify-between w-full opacity-90">
+                <span className="text-[9px] font-bold tracking-wide truncate pr-1" style={{ color: fill }}>
                   {startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                 </span>
-                <span className="text-[9px] font-medium tracking-wide drop-shadow-sm truncate pl-1 hidden sm:block" style={{ color: fill }}>
+                <span className="text-[9px] font-bold tracking-wide truncate pl-1 hidden sm:block" style={{ color: fill }}>
                   {endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                 </span>
               </div>
