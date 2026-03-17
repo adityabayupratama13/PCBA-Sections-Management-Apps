@@ -98,6 +98,47 @@ export default function DashboardPage() {
     return 'bg-gray-500/15 text-gray-400';
   };
 
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-white dark:bg-surface border border-border rounded-xl shadow-xl p-3 text-xs animate-in fade-in zoom-in-95 duration-200">
+          <p className="font-semibold text-foreground mb-2">{label}</p>
+          {payload.map((entry: any, index: number) => (
+            <div key={index} className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full shadow-sm" style={{ backgroundColor: entry.color || entry.payload?.fill }} />
+                <span className="text-muted-foreground capitalize">Tasks</span>
+              </div>
+              <span className="font-bold text-foreground">{entry.value}</span>
+            </div>
+          ))}
+        </div>
+      );
+    }
+    return null;
+  };
+
+  const PieTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+      const data = payload[0].payload;
+      const total = ticketPie.reduce((s, d) => s + d.value, 0);
+      const pct = total > 0 ? ((data.value / total) * 100).toFixed(1) : '0';
+      return (
+        <div className="bg-white dark:bg-surface border border-border rounded-xl shadow-xl p-3 text-xs animate-in fade-in zoom-in-95 duration-200 min-w-[120px]">
+          <div className="flex items-center gap-2 mb-2 pb-2 border-b border-border/50">
+            <div className="w-2.5 h-2.5 rounded-full shadow-sm" style={{ backgroundColor: data.color || data.fill }} />
+            <p className="font-semibold text-foreground">{data.name}</p>
+          </div>
+          <div className="flex flex-col gap-1.5">
+             <div className="flex justify-between items-center gap-4"><span className="text-muted-foreground">Count</span> <strong className="text-foreground">{data.value}</strong></div>
+             <div className="flex justify-between items-center gap-4"><span className="text-muted-foreground">Share</span> <strong className="text-foreground">{pct}%</strong></div>
+          </div>
+        </div>
+      );
+    }
+    return null;
+  };
+
   if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>;
 
   return (
@@ -138,7 +179,7 @@ export default function DashboardPage() {
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
               <XAxis dataKey="name" tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }} axisLine={false} tickLine={false} allowDecimals={false} />
-              <Tooltip contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12 }} />
+              <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--muted)', opacity: 0.4 }} />
               <Bar dataKey="count" radius={[4, 4, 0, 0]}>
                 {taskBar.map((e, i) => <Cell key={i} fill={e.fill} />)}
               </Bar>
@@ -154,7 +195,7 @@ export default function DashboardPage() {
                 <Pie data={ticketPie} cx="50%" cy="50%" innerRadius={50} outerRadius={75} paddingAngle={3} dataKey="value">
                   {ticketPie.map((e, i) => <Cell key={i} fill={e.color} />)}
                 </Pie>
-                <Tooltip contentStyle={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 8, fontSize: 12 }} />
+                <Tooltip content={<PieTooltip />} />
                 <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} />
               </PieChart>
             </ResponsiveContainer>

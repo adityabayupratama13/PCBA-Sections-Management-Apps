@@ -4,8 +4,10 @@ import { Plus, Search, Calendar as CalendarIcon, Users, Check, ChevronLeft, Chev
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { DataTable } from '@/components/DataTable';
 import { KanbanColumn, KanbanCard } from '@/components/KanbanBoard';
 import { Modal, ConfirmDialog } from '@/components/Modal';
+import { CommentsSection, type Comment } from '@/components/CommentsSection';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
 import { useApi } from '@/hooks/useApi';
@@ -40,13 +42,15 @@ export default function TasksPage() {
   const [search, setSearch] = useState('');
   const [filterAssignee, setFilterAssignee] = useState('All');
   const [filterPriority, setFilterPriority] = useState('All');
+  const [filterDate, setFilterDate] = useState('');
+  
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Task | null>(null);
   const [selectedAssignees, setSelectedAssignees] = useState<string[]>([]);
-  const [filterDate, setFilterDate] = useState<string>(''); // For daily filter
   const [uploading, setUploading] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
+  const [taskComments, setTaskComments] = useState<Comment[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -66,9 +70,36 @@ export default function TasksPage() {
 
   const exportPDF = () => {
     const doc = new jsPDF();
-    doc.text('Task Tracking Report', 14, 15);
+    
+    // Header
+    doc.setFillColor(59, 130, 246); // Primary blue
+    doc.rect(0, 0, 210, 24, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text('IT Management Dashboard', 14, 12);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Task Tracking Report', 14, 18);
+    
+    // Meta info
+    doc.setTextColor(100, 100, 100);
+    doc.setFontSize(9);
+    doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 32);
+    doc.text(`Total Tasks: ${filteredTasks.length}`, 14, 38);
+
     const tableData = filteredTasks.map(t => [t.id, t.title, t.status, t.priority, t.assignee, t.due_date ? new Date(t.due_date).toLocaleDateString() : '-']);
-    autoTable(doc, { startY: 20, head: [['ID', 'Title', 'Status', 'Priority', 'Assignees', 'Due Date']], body: tableData });
+    
+    autoTable(doc, { 
+      startY: 45, 
+      head: [['ID', 'Title', 'Status', 'Priority', 'Assignees', 'Due Date']], 
+      body: tableData,
+      theme: 'grid',
+      headStyles: { fillColor: [59, 130, 246], textColor: 255, fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+      styles: { fontSize: 8, cellPadding: 3 }
+    });
+    
     doc.save(`Tasks_Report_${new Date().toISOString().split('T')[0]}.pdf`);
     toast.success('PDF Exported');
   };
@@ -77,6 +108,13 @@ export default function TasksPage() {
     const ws = XLSX.utils.json_to_sheet(filteredTasks.map(t => ({ 
       ID: t.id, Title: t.title, Status: t.status, Priority: t.priority, Assignees: t.assignee, 'Due Date': t.due_date, Resolution: t.resolution 
     })));
+    
+    // Set auto column widths for Excel
+    const wscols = [
+      { wch: 10 }, { wch: 40 }, { wch: 15 }, { wch: 15 }, { wch: 25 }, { wch: 15 }, { wch: 30 }
+    ];
+    ws['!cols'] = wscols;
+
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Tasks');
     XLSX.writeFile(wb, `Tasks_Report_${new Date().toISOString().split('T')[0]}.xlsx`);
@@ -96,6 +134,7 @@ export default function TasksPage() {
     setEditingTask({ id: 0, title: '', status, priority: 'Medium', assignee: '', initials: '', due_date: '', resolution: '', attachments: '[]' });
     setSelectedAssignees([]);
     setUploadedFiles([]);
+    setTaskComments([]);
     setIsModalOpen(true);
   };
 
@@ -105,6 +144,7 @@ export default function TasksPage() {
     const initialAssignees = task.assignee ? task.assignee.split(', ').filter(a => validNames.includes(a)) : [];
     setSelectedAssignees(initialAssignees);
     try { setUploadedFiles(JSON.parse(task.attachments || '[]')); } catch { setUploadedFiles([]); }
+    try { setTaskComments(JSON.parse((task as any).comments || '[]')); } catch { setTaskComments([]); }
     setIsModalOpen(true);
   };
 
@@ -138,6 +178,7 @@ export default function TasksPage() {
       dueDate: formData.get('dueDate') as string,
       resolution: formData.get('resolution') as string,
       attachments: JSON.stringify(uploadedFiles),
+      comments: JSON.stringify(taskComments),
       userName: currentUser?.name || 'System',
     };
     if (editingTask && editingTask.id > 0) {
@@ -374,6 +415,10 @@ export default function TasksPage() {
                 ))}
               </ul>
             )}
+          </div>
+
+          <div className="pt-2">
+            <CommentsSection comments={taskComments} setComments={setTaskComments} />
           </div>
 
           <div className="pt-4 flex justify-end gap-3 border-t border-border">

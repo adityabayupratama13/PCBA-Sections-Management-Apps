@@ -17,11 +17,11 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
   const db = getDb();
   const result = db.prepare(
-    'INSERT INTO tasks (title, status, priority, assignee, initials, due_date, ticket_id, resolution, attachments) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)'
+    'INSERT INTO tasks (title, status, priority, assignee, initials, due_date, ticket_id, resolution, attachments, comments) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
   ).run(
     body.title, body.status || 'Backlog', body.priority || 'Medium',
     body.assignee, body.initials || '', body.dueDate || '', body.ticketId || '',
-    body.resolution || '', body.attachments || '[]'
+    body.resolution || '', body.attachments || '[]', body.comments || '[]'
   );
   db.prepare('INSERT INTO audit_logs (action, module, details, user_name) VALUES (?, ?, ?, ?)').run(
     'Created', 'Tasks', `Created task: ${body.title}${body.ticketId ? ` (from ${body.ticketId})` : ''}`, body.userName || 'System'
@@ -38,8 +38,8 @@ export async function PUT(req: NextRequest) {
   const ticketId = body.ticketId || body.ticket_id || existingTask?.ticket_id || '';
 
   db.prepare(
-    "UPDATE tasks SET title=?, status=?, priority=?, assignee=?, initials=?, due_date=?, ticket_id=?, resolution=?, attachments=?, updated_at=datetime('now', 'localtime') WHERE id=?"
-  ).run(body.title, body.status, body.priority, body.assignee, body.initials || '', body.dueDate || '', ticketId, body.resolution || '', body.attachments || '[]', body.id);
+    "UPDATE tasks SET title=?, status=?, priority=?, assignee=?, initials=?, due_date=?, ticket_id=?, resolution=?, attachments=?, comments=?, updated_at=datetime('now', 'localtime') WHERE id=?"
+  ).run(body.title, body.status, body.priority, body.assignee, body.initials || '', body.dueDate || '', ticketId, body.resolution || '', body.attachments || '[]', body.comments || '[]', body.id);
 
   // Sync: if this task is linked to a ticket, update ticket status too
   if (ticketId) {

@@ -21,7 +21,7 @@ export function Header({ className = '', onMenuClick }: HeaderProps) {
   useEffect(() => setMounted(true), []);
 
   return (
-    <header className={`flex items-center justify-between h-16 px-4 sm:px-6 flex-shrink-0 glass-header ${className}`}
+    <header className={`relative z-40 flex items-center justify-between h-16 px-4 sm:px-6 flex-shrink-0 glass-header ${className}`}
     >
       {/* Left side */}
       <div className="flex items-center gap-3">

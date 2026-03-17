@@ -6,6 +6,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { DataTable } from '@/components/DataTable';
 import { Modal, ConfirmDialog } from '@/components/Modal';
+import { CommentsSection, type Comment } from '@/components/CommentsSection';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
 import { useApi } from '@/hooks/useApi';
@@ -32,6 +33,7 @@ export default function TicketsPage() {
   const [deleteTarget, setDeleteTarget] = useState<Ticket | null>(null);
   const [uploading, setUploading] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
+  const [ticketComments, setTicketComments] = useState<Comment[]>([]);
   const { currentUser } = useAuth();
 
   useEffect(() => {
@@ -51,9 +53,36 @@ export default function TicketsPage() {
 
   const exportPDF = () => {
     const doc = new jsPDF();
-    doc.text('Help Desk Tickets Report', 14, 15);
+    
+    // Header
+    doc.setFillColor(59, 130, 246); // Primary blue
+    doc.rect(0, 0, 210, 24, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text('IT Management Dashboard', 14, 12);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Help Desk Tickets Report', 14, 18);
+    
+    // Meta info
+    doc.setTextColor(100, 100, 100);
+    doc.setFontSize(9);
+    doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 32);
+    doc.text(`Total Tickets: ${filteredTickets.length}`, 14, 38);
+
     const tableData = filteredTickets.map(t => [t.id, t.title, t.reporter, t.priority, t.status, new Date(t.created_date).toLocaleDateString()]);
-    autoTable(doc, { startY: 20, head: [['ID', 'Title', 'Reporter', 'Priority', 'Status', 'Created Date']], body: tableData });
+    
+    autoTable(doc, { 
+      startY: 45, 
+      head: [['ID', 'Title', 'Reporter', 'Priority', 'Status', 'Created Date']], 
+      body: tableData,
+      theme: 'grid',
+      headStyles: { fillColor: [59, 130, 246], textColor: 255, fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+      styles: { fontSize: 8, cellPadding: 3 }
+    });
+    
     doc.save(`Tickets_Report_${new Date().toISOString().split('T')[0]}.pdf`);
     toast.success('PDF Exported');
   };
@@ -62,6 +91,13 @@ export default function TicketsPage() {
     const ws = XLSX.utils.json_to_sheet(filteredTickets.map(t => ({ 
       ID: t.id, Title: t.title, Reporter: t.reporter, Priority: t.priority, Status: t.status, 'Created Date': new Date(t.created_date).toLocaleString(), Resolution: t.resolution 
     })));
+    
+    // Auto-size columns for Excel
+    const wscols = [
+      { wch: 10 }, { wch: 40 }, { wch: 20 }, { wch: 15 }, { wch: 15 }, { wch: 20 }, { wch: 30 }
+    ];
+    ws['!cols'] = wscols;
+
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Tickets');
     XLSX.writeFile(wb, `Tickets_Report_${new Date().toISOString().split('T')[0]}.xlsx`);
@@ -86,11 +122,13 @@ export default function TicketsPage() {
   const openAddModal = () => { 
     setEditingTicket(null); 
     setUploadedFiles([]);
+    setTicketComments([]);
     setIsModalOpen(true); 
   };
   const openEditModal = (ticket: Ticket) => { 
     setEditingTicket(ticket); 
     try { setUploadedFiles(JSON.parse(ticket.attachments || '[]')); } catch { setUploadedFiles([]); }
+    try { setTicketComments(JSON.parse((ticket as any).comments || '[]')); } catch { setTicketComments([]); }
     setIsModalOpen(true); 
   };
 
@@ -118,6 +156,7 @@ export default function TicketsPage() {
       status: formData.get('status') as string,
       resolution: formData.get('resolution') as string,
       attachments: JSON.stringify(uploadedFiles),
+      comments: JSON.stringify(ticketComments),
       userName: currentUser?.name || 'System',
     };
     if (editingTicket) {
@@ -318,6 +357,11 @@ export default function TicketsPage() {
               </ul>
             )}
           </div>
+
+          <div className="pt-2">
+            <CommentsSection comments={ticketComments} setComments={setTicketComments} />
+          </div>
+
           <div className="pt-4 flex justify-end gap-3 border-t border-border">
             <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 border border-border rounded-lg text-sm font-medium text-foreground hover:bg-primary/5 transition-colors">Cancel</button>
             <button type="submit" className="px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg text-sm font-medium transition-colors shadow-sm">{editingTicket ? 'Save Changes' : 'Create Ticket'}</button>
