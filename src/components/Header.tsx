@@ -14,11 +14,32 @@ export function Header({ className = '', onMenuClick }: HeaderProps) {
   const { currentUser, logout, auditLogs } = useAuth();
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
-  
-  const recentLogs = auditLogs.slice(0, 10);
-  const unreadCount = recentLogs.length;
+  const [lastViewed, setLastViewed] = useState<number>(0);
 
-  useEffect(() => setMounted(true), []);
+  useEffect(() => {
+    setMounted(true);
+    const saved = localStorage.getItem('last_notification_view');
+    if (saved) setLastViewed(parseInt(saved));
+  }, []);
+
+  const recentLogs = auditLogs.slice(0, 15);
+  const unreadCount = recentLogs.filter(log => new Date(log.timestamp).getTime() > lastViewed).length;
+
+  const handleOpenNotifications = () => {
+    setShowNotifications(!showNotifications);
+    if (!showNotifications) {
+      const now = Date.now();
+      setLastViewed(now);
+      localStorage.setItem('last_notification_view', now.toString());
+    }
+  };
+
+  const handleClearNotifications = () => {
+    const now = Date.now();
+    setLastViewed(now);
+    localStorage.setItem('last_notification_view', now.toString());
+    setShowNotifications(false);
+  };
 
   return (
     <header className={`relative z-40 flex items-center justify-between h-16 px-4 sm:px-6 flex-shrink-0 glass-header ${className}`}
@@ -79,7 +100,7 @@ export function Header({ className = '', onMenuClick }: HeaderProps) {
         {/* Notifications */}
         <div className="relative">
           <button
-            onClick={() => setShowNotifications(!showNotifications)}
+            onClick={handleOpenNotifications}
             className="relative p-2 rounded-xl text-muted-foreground hover:text-primary hover:bg-primary/8 transition-all"
           >
             <Bell className="w-5 h-5" />
@@ -100,7 +121,7 @@ export function Header({ className = '', onMenuClick }: HeaderProps) {
                     <p className="text-xs text-muted-foreground">{unreadCount} recent activities</p>
                   </div>
                   <button
-                    onClick={() => setShowNotifications(false)}
+                    onClick={handleClearNotifications}
                     className="flex items-center gap-1 text-xs text-primary hover:text-primary/80 font-medium"
                   >
                     <CheckCheck className="w-3.5 h-3.5" />
@@ -108,10 +129,13 @@ export function Header({ className = '', onMenuClick }: HeaderProps) {
                   </button>
                 </div>
                 <div className="max-h-72 overflow-y-auto custom-scrollbar">
-                  {recentLogs.length > 0 ? recentLogs.map((log) => (
-                    <div key={log.id} className="p-3 border-b hover:bg-primary/4 transition-colors cursor-pointer" style={{ borderColor: 'var(--border)' }}>
+                  {recentLogs.length > 0 ? recentLogs.map((log) => {
+                    const isUnread = new Date(log.timestamp).getTime() > lastViewed;
+                    return (
+                    <div key={log.id} className={`p-3 border-b hover:bg-primary/4 transition-colors cursor-pointer ${isUnread ? 'bg-primary/5' : ''}`} style={{ borderColor: 'var(--border)' }}>
                       <div className="flex items-start gap-2.5">
-                        <div className="w-6 h-6 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5 border border-primary/20">
+                        <div className="relative w-6 h-6 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5 border border-primary/20">
+                          {isUnread && <span className="absolute -top-1 -right-1 w-2 h-2 bg-primary rounded-full ring-2 ring-surface" />}
                           <span className="text-primary text-[9px] font-bold">{log.action.charAt(0)}</span>
                         </div>
                         <div className="flex-1 min-w-0">
@@ -123,7 +147,7 @@ export function Header({ className = '', onMenuClick }: HeaderProps) {
                         </div>
                       </div>
                     </div>
-                  )) : (
+                  )}) : (
                     <div className="p-8 text-center">
                       <Bell className="w-8 h-8 mx-auto mb-2 text-muted-foreground opacity-20" />
                       <p className="text-sm text-muted-foreground">No notifications yet</p>

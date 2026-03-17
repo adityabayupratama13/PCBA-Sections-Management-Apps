@@ -200,21 +200,100 @@ export default function ProjectsPage() {
         </div>
         <div className="p-4 overflow-x-auto custom-scrollbar">
           <div className="min-w-[950px]">
-            <div className="flex border-b border-border/50 pb-2 mb-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
+            <div className="flex border-b border-border/50 pb-2 mb-2 text-xs font-medium text-muted-foreground uppercase tracking-wider relative">
               <div className="w-[30%] pl-4 shrink-0">Project Details</div>
-              <div className="flex-1 flex justify-between pr-4 relative">
-                <span className="opacity-80">Progress Status</span>
+              
+              {/* Dynamic Calendar Header */}
+              <div className="flex-1 flex justify-between pr-4 relative h-4 overflow-hidden">
+                {(() => {
+                  if (projects.length === 0) return <span className="opacity-80">Timeline</span>;
+                  const dates = projects.flatMap(p => [new Date(p.startDate).getTime(), new Date(p.endDate).getTime()]);
+                  const minTime = Math.min(...dates);
+                  const maxTime = Math.max(...dates);
+                  const startDate = new Date(minTime);
+                  const endDate = new Date(maxTime);
+                  // add a small buffer of 14 days to the ends
+                  startDate.setDate(startDate.getDate() - 14);
+                  endDate.setDate(endDate.getDate() + 14);
+                  
+                  const totalDays = Math.max(1, (endDate.getTime() - startDate.getTime()) / (1000 * 3600 * 24));
+                  
+                  // generate monthly markers
+                  const markers = [];
+                  for (let curr = new Date(startDate); curr <= endDate; curr.setMonth(curr.getMonth() + 1)) {
+                    const offsetDays = (curr.getTime() - startDate.getTime()) / (1000 * 3600 * 24);
+                    const leftPct = (offsetDays / totalDays) * 100;
+                    if (leftPct >= 0 && leftPct <= 100) {
+                      markers.push(
+                        <div key={curr.toISOString()} className="absolute flex flex-col items-center" style={{ left: `${leftPct}%` }}>
+                          <span className="text-[10px] whitespace-nowrap -translate-x-1/2 opacity-70">
+                            {curr.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                          </span>
+                        </div>
+                      );
+                    }
+                  }
+                  return markers;
+                })()}
               </div>
             </div>
-            <div className="space-y-1">
+            <div className="space-y-1 relative">
+              {/* Background grid lines for months */}
+              <div className="absolute inset-0 left-[30%] right-[16px] pointer-events-none opacity-5 flex">
+                {(() => {
+                   if (projects.length === 0) return null;
+                   // Re-calculate to keep grid matching header
+                   const dates = projects.flatMap(p => [new Date(p.startDate).getTime(), new Date(p.endDate).getTime()]);
+                   const minTime = Math.min(...dates);
+                   const maxTime = Math.max(...dates);
+                   const startDate = new Date(minTime);
+                   const endDate = new Date(maxTime);
+                   startDate.setDate(startDate.getDate() - 14);
+                   endDate.setDate(endDate.getDate() + 14);
+                   const totalDays = Math.max(1, (endDate.getTime() - startDate.getTime()) / (1000 * 3600 * 24));
+                   
+                   const lines = [];
+                   for (let curr = new Date(startDate); curr <= endDate; curr.setMonth(curr.getMonth() + 1)) {
+                     const offsetDays = (curr.getTime() - startDate.getTime()) / (1000 * 3600 * 24);
+                     const leftPct = (offsetDays / totalDays) * 100;
+                     if (leftPct >= 0 && leftPct <= 100) {
+                       lines.push(<div key={`line-${curr.toISOString()}`} className="absolute top-0 bottom-0 w-px bg-foreground" style={{ left: `${leftPct}%` }} />);
+                     }
+                   }
+                   return lines;
+                })()}
+              </div>
+
               {[...projects].sort((a,b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime()).map(project => {
                 const autoProgress = getAutoProgress(project);
                 const hasLinks = (project.linkedTasks?.length > 0) || (project.linkedSchedules?.length > 0);
                 const isExpanded = expandedProject === project.id;
+                
+                // Timeline boundary calculation for GanttRow prop passing
+                let globalStartDate = new Date();
+                let totalDays = 1;
+                if (projects.length > 0) {
+                  const dates = projects.flatMap(p => [new Date(p.startDate).getTime(), new Date(p.endDate).getTime()]);
+                  globalStartDate = new Date(Math.min(...dates));
+                  const globalEndDate = new Date(Math.max(...dates));
+                  globalStartDate.setDate(globalStartDate.getDate() - 14);
+                  globalEndDate.setDate(globalEndDate.getDate() + 14);
+                  totalDays = Math.max(1, (globalEndDate.getTime() - globalStartDate.getTime()) / (1000 * 3600 * 24));
+                }
+
                 return (
                   <div key={project.id}>
                     <div className="group relative cursor-pointer" onClick={() => setExpandedProject(isExpanded ? null : project.id)}>
-                      <GanttRow name={project.name} pic={project.pic} startDate={new Date(project.startDate)} endDate={new Date(project.endDate)} progress={autoProgress} status={project.status} />
+                      <GanttRow 
+                        name={project.name} 
+                        pic={project.pic} 
+                        startDate={new Date(project.startDate)} 
+                        endDate={new Date(project.endDate)} 
+                        progress={autoProgress} 
+                        status={project.status} 
+                        globalStartDate={globalStartDate}
+                        totalDays={totalDays}
+                      />
                       {hasLinks && (
                         <div className="absolute left-[29%] top-1/2 -translate-y-1/2 flex items-center gap-1 z-10 bg-surface/80 px-1 rounded backdrop-blur-sm">
                           <Link2 className="w-3 h-3 text-primary" />

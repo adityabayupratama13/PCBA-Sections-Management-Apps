@@ -5,9 +5,11 @@ export interface GanttRowProps {
   endDate: Date;
   progress: number;
   status: 'Planning' | 'Active' | 'On Hold' | 'Completed';
+  globalStartDate: Date;
+  totalDays: number;
 }
 
-export function GanttRow({ name, pic, startDate, endDate, progress, status }: GanttRowProps) {
+export function GanttRow({ name, pic, startDate, endDate, progress, status, globalStartDate, totalDays }: GanttRowProps) {
   
   const FILL_COLORS = {
     'Planning':  '#7C3AED',
@@ -18,30 +20,37 @@ export function GanttRow({ name, pic, startDate, endDate, progress, status }: Ga
 
   const fill = FILL_COLORS[status] || '#2563EB';
 
+  // Calculate timeline offsets
+  const dayMs = 1000 * 3600 * 24;
+  const projectDurationDays = Math.max(1, (endDate.getTime() - startDate.getTime()) / dayMs);
+  const startOffsetDays = Math.max(0, (startDate.getTime() - globalStartDate.getTime()) / dayMs);
+  
+  const leftPercent = totalDays > 0 ? (startOffsetDays / totalDays) * 100 : 0;
+  const widthPercent = totalDays > 0 ? (projectDurationDays / totalDays) * 100 : 100;
+
   return (
-    <div className="flex items-center py-3.5 border-b border-border/40 last:border-0 transition-colors group px-2 rounded-lg"
+    <div className="flex py-3.5 border-b border-border/40 last:border-0 transition-colors group px-2 rounded-lg relative"
       onMouseEnter={e => { e.currentTarget.style.background = 'var(--muted)'; }}
       >
-        <div className="w-[30%] shrink-0 pr-4 flex flex-col pl-2 overflow-hidden">
+        <div className="w-[30%] shrink-0 pr-4 flex flex-col pl-2 overflow-hidden z-10 bg-inherit z-20 sticky left-0">
           <span className="text-sm font-semibold text-foreground truncate group-hover:text-primary transition-colors">{name}</span>
           <span className="text-xs text-muted-foreground truncate mt-0.5">PIC: {pic}</span>
         </div>
-        <div className="flex-1 flex flex-col justify-center pr-2 overflow-hidden">
-          <div className="flex justify-between text-[10.5px] text-muted-foreground mb-1 font-medium px-1 uppercase tracking-wider">
-          <span>{startDate.toISOString().split('T')[0]}</span>
-          <span className="text-foreground/50">{status}</span>
-          <span>{endDate.toISOString().split('T')[0]}</span>
+        
+        {/* Timeline track */}
+        <div className="flex-1 relative h-10 overflow-hidden flex items-center pr-2">
+           <div 
+             className="absolute h-8 rounded-md overflow-hidden shadow-sm transition-all hover:brightness-110 flex items-center px-2 group/block cursor-pointer"
+             style={{ left: `${leftPercent}%`, width: `${widthPercent}%`, background: `${fill}25`, border: `1px solid ${fill}50` }}
+           >
+              {/* Internal progress bar */}
+              <div 
+                className="absolute top-0 bottom-0 left-0 transition-all opacity-40" 
+                style={{ width: `${progress}%`, background: fill }} 
+              />
+              <span className="relative z-10 text-[10px] font-bold" style={{ color: fill }}>{progress}%</span>
+           </div>
         </div>
-        <div className="flex items-center gap-3 w-full">
-          <div className="relative h-2 w-full rounded-full overflow-hidden bg-muted/60 border border-border/40">
-            <div
-              className="absolute top-0 bottom-0 left-0 rounded-full transition-all"
-              style={{ width: `${progress}%`, background: fill }}
-            />
-          </div>
-          <span className="text-xs font-bold text-muted-foreground group-hover:text-foreground transition-colors w-10 text-right flex-shrink-0">{progress}%</span>
-        </div>
-      </div>
     </div>
   );
 }

@@ -6,6 +6,7 @@ import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
   PieChart, Pie, Cell, Legend
 } from 'recharts';
+import { useAuth } from '@/context/AuthContext';
 
 interface Stats { members: number; tickets: { total: number; open: number; inProgress: number; resolved: number }; tasks: { total: number; backlog: number; inProgress: number; review: number; done: number }; logs: number; positions: number; }
 interface AuditLog { id: number; action: string; module: string; details: string; user_name: string; timestamp: string; }
@@ -13,6 +14,7 @@ interface TaskItem { assignee: string; status: string; }
 interface MemberItem { name: string; role: string; status: string; }
 
 export default function DashboardPage() {
+  const { auditLogs } = useAuth();
   const [stats, setStats] = useState<Stats>({ members: 0, tickets: { total: 0, open: 0, inProgress: 0, resolved: 0 }, tasks: { total: 0, backlog: 0, inProgress: 0, review: 0, done: 0 }, logs: 0, positions: 0 });
   const [recentLogs, setRecentLogs] = useState<AuditLog[]>([]);
   const [workloads, setWorkloads] = useState<{ name: string; tasks: number }[]>([]);
@@ -21,7 +23,7 @@ export default function DashboardPage() {
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Layout State
-  const defaultLayout = ['stats', 'charts', 'workload'];
+  const defaultLayout = ['stats', 'activity', 'charts', 'workload'];
   const [layout, setLayout] = useState<string[]>(defaultLayout);
   const [isEditingLayout, setIsEditingLayout] = useState(false);
   const [draggedItem, setDraggedItem] = useState<string | null>(null);
@@ -244,6 +246,44 @@ export default function DashboardPage() {
                   </div>
                 </div>
               ))}
+            </div>
+          </LayoutWrapperBlock>
+        );
+
+        if (blockId === 'activity') return (
+          <LayoutWrapperBlock key="activity" id="activity">
+            <div className="rounded-2xl border p-4 sm:p-5 flex flex-col h-[380px]" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+              <div className="flex items-center justify-between mb-4 pb-3 border-b border-border/50">
+                <div className="flex items-center gap-2">
+                  <Activity className="w-5 h-5 text-primary" />
+                  <h2 className="font-semibold text-foreground">Live Activity Feed</h2>
+                </div>
+              </div>
+              <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-4">
+                {auditLogs.slice(0, 15).length > 0 ? auditLogs.slice(0, 15).map((log) => (
+                  <div key={log.id} className="group flex items-start gap-3 relative animate-enter opacity-0">
+                    <div className="absolute left-[11px] top-6 bottom-[-16px] w-[2px] bg-border group-last:hidden" />
+                    <div className="relative z-10 w-6 h-6 rounded-full bg-surface border-2 border-primary flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                    </div>
+                    <div className="flex-1 min-w-0 bg-muted/40 p-2.5 rounded-lg border border-border/50 transition-colors hover:bg-muted/80">
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <span className="text-xs font-semibold text-foreground">{log.action} <span className="font-normal opacity-60">· {log.module}</span></span>
+                        <span className="text-[10px] text-muted-foreground whitespace-nowrap">{new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                      </div>
+                      <div className="text-xs text-muted-foreground truncate">{log.details}</div>
+                      <div className="text-[10px] font-medium text-primary mt-1.5 flex items-center gap-1">
+                        <Users className="w-3 h-3" /> {log.user_name}
+                      </div>
+                    </div>
+                  </div>
+                )) : (
+                  <div className="h-full flex flex-col items-center justify-center text-muted-foreground opacity-60">
+                    <Activity className="w-8 h-8 mb-2" />
+                    <p className="text-sm">No activity recorded yet</p>
+                  </div>
+                )}
+              </div>
             </div>
           </LayoutWrapperBlock>
         );
