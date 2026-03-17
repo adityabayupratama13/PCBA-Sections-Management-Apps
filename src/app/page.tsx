@@ -430,8 +430,13 @@ export default function DashboardPage() {
                       <div 
                         key={dateStr}
                         title={tooltipText}
-                        className={`w-6 h-6 sm:w-8 sm:h-8 rounded-[4px] bg-emerald-500 ${opacity} transition-all hover:opacity-100 hover:scale-110 cursor-help ring-1 ring-inset ring-emerald-500/20`}
-                      />
+                        className={`w-12 h-14 sm:w-14 sm:h-16 shrink-0 rounded-[6px] border border-black/10 flex flex-col items-center justify-center bg-emerald-500 ${opacity} transition-all hover:opacity-100 hover:-translate-y-1 cursor-help ring-1 ring-inset ring-emerald-500/20`}
+                      >
+                        <span className="text-[10px] font-bold text-white/90 mb-1">{new Date(dateStr).getDate()}</span>
+                        {stat && stat.count > 0 && (
+                          <span className="text-[11px] font-black text-white">{stat.count}</span>
+                        )}
+                      </div>
                     );
                   }
                   return days;
