@@ -40,3 +40,20 @@ data/
 *.db
 *.db-shm
 *.db-wal
+
+# MySQL backups & temp files
+mysql_backup/
+giken_db_dump.sql
+
+# One-off migration/fix scripts
+migrate.js
+generate-dump.js
+fix*.js
+patch*.js
+refactor*.js
+dump*.js
+diag*.js
+cmsg.txt
+commit_msg.txt
+dns-test.js
+mysql-test.js
