@@ -43,12 +43,12 @@ export function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
         targets: navRef.current.querySelectorAll('.nav-item'),
         translateX: [-20, 0],
         opacity: [0, 1],
-        delay: anime.stagger(50, { start: 100 }), // Cascade start
+        delay: anime.stagger(20, { start: 50 }),
         easing: 'easeOutElastic(1, .8)',
         duration: 800
       });
     }
-  }, []);
+  }, [isOpen]);
 
   const SidebarContent = (
     <div className="h-full flex flex-col w-64 glass-sidebar">
