@@ -19,7 +19,7 @@ export default function DashboardPage() {
   const [recentLogs, setRecentLogs] = useState<AuditLog[]>([]);
   const [workloads, setWorkloads] = useState<{ name: string; tasks: number }[]>([]);
   const [teamMembers, setTeamMembers] = useState<MemberItem[]>([]);
-  const [heatmap, setHeatmap] = useState<{ log_date: string; count: number; intensity_score: number }[]>([]);
+  const [heatmap, setHeatmap] = useState<{ log_date: string; count: number; intensity_score: number; items?: string[] }[]>([]);
   const [loading, setLoading] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -422,10 +422,14 @@ export default function DashboardPage() {
                       else opacity = 'opacity-40';
                     }
 
+                    const tooltipText = stat 
+                      ? `${dateStr}: ${stat.count} items completed\n${stat.items?.join('\n') || ''}`.trim()
+                      : `${dateStr}: 0 items completed`;
+
                     days.push(
                       <div 
                         key={dateStr}
-                        title={`${dateStr}: ${stat ? stat.count + ' workflows logged' : '0 actions'}`}
+                        title={tooltipText}
                         className={`w-6 h-6 sm:w-8 sm:h-8 rounded-[4px] bg-emerald-500 ${opacity} transition-all hover:opacity-100 hover:scale-110 cursor-help ring-1 ring-inset ring-emerald-500/20`}
                       />
                     );
