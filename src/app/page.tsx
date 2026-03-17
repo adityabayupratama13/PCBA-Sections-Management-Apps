@@ -19,11 +19,12 @@ export default function DashboardPage() {
   const [recentLogs, setRecentLogs] = useState<AuditLog[]>([]);
   const [workloads, setWorkloads] = useState<{ name: string; tasks: number }[]>([]);
   const [teamMembers, setTeamMembers] = useState<MemberItem[]>([]);
+  const [heatmap, setHeatmap] = useState<{ log_date: string; count: number; intensity_score: number }[]>([]);
   const [loading, setLoading] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Layout State
-  const defaultLayout = ['stats', 'activity', 'charts', 'workload'];
+  const defaultLayout = ['stats', 'activity', 'charts', 'workload', 'heatmap', 'activityWorkflow'];
   const [layout, setLayout] = useState<string[]>(defaultLayout);
   const [isEditingLayout, setIsEditingLayout] = useState(false);
   const [draggedItem, setDraggedItem] = useState<string | null>(null);
@@ -41,9 +42,11 @@ export default function DashboardPage() {
       fetch('/api/daily-logs').then(r => r.json()),
       fetch('/api/audit').then(r => r.json()),
       fetch('/api/positions').then(r => r.json()),
-    ]).then(([m, t, tk, dl, al, pos]) => {
+      fetch('/api/analytics').then(r => r.json()),
+    ]).then(([m, t, tk, dl, al, pos, analyticsResult]) => {
       setRecentLogs(al.slice(0, 10));
       setTeamMembers(m.slice(0, 8));
+      if (analyticsResult && analyticsResult.heatmap) setHeatmap(analyticsResult.heatmap);
 
       // Workload: count tasks per assignee
       const wMap: Record<string, number> = {};
@@ -372,6 +375,74 @@ export default function DashboardPage() {
                     </div>
                   ))}
                 </div>
+              </div>
+            </div>
+          </LayoutWrapperBlock>
+        );
+
+        if (blockId === 'heatmap') return (
+          <LayoutWrapperBlock key="heatmap" id="heatmap">
+            <div className="animate-enter opacity-0 rounded-2xl border p-5 flex flex-col" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <Activity className="w-4 h-4 text-emerald-500" /> 30-Day Workload Heatmap
+                </h2>
+                <span className="text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full border border-border">Based on daily ticket & task activity</span>
+              </div>
+              
+              <div className="flex flex-wrap gap-1.5 mt-2 overflow-x-auto pb-2 custom-scrollbar">
+                {(() => {
+                  const days = [];
+                  const today = new Date();
+                  today.setHours(0, 0, 0, 0); // Normalize to local midnight
+                  
+                  // Local utility to format YYYY-MM-DD
+                  const formatYMD = (d: Date) => {
+                    const year = d.getFullYear();
+                    const month = String(d.getMonth() + 1).padStart(2, '0');
+                    const day = String(d.getDate()).padStart(2, '0');
+                    return `${year}-${month}-${day}`;
+                  };
+
+                  // Make a map of dates from analytics for O(1) lookup
+                  const heatmapMap = new Map();
+                  heatmap.forEach(item => heatmapMap.set(item.log_date, item));
+
+                  for (let i = 29; i >= 0; i--) {
+                    const d = new Date(today);
+                    d.setDate(d.getDate() - i);
+                    const dateStr = formatYMD(d);
+                    const stat = heatmapMap.get(dateStr);
+                    
+                    let opacity = 'opacity-10';
+                    if (stat && stat.count > 0) {
+                      if (stat.intensity_score > 50) opacity = 'opacity-100'; 
+                      else if (stat.intensity_score > 30) opacity = 'opacity-80'; 
+                      else if (stat.intensity_score > 10) opacity = 'opacity-60'; 
+                      else opacity = 'opacity-40';
+                    }
+
+                    days.push(
+                      <div 
+                        key={dateStr}
+                        title={`${dateStr}: ${stat ? stat.count + ' workflows logged' : '0 actions'}`}
+                        className={`w-6 h-6 sm:w-8 sm:h-8 rounded-[4px] bg-emerald-500 ${opacity} transition-all hover:opacity-100 hover:scale-110 cursor-help ring-1 ring-inset ring-emerald-500/20`}
+                      />
+                    );
+                  }
+                  return days;
+                })()}
+              </div>
+              <div className="mt-4 flex items-center justify-start gap-2 text-[10px] text-muted-foreground font-medium pt-3 border-t border-border/40">
+                <span>Less active</span>
+                <div className="flex gap-1">
+                  <div className="w-3 h-3 rounded-[3px] bg-emerald-500 opacity-10"></div>
+                  <div className="w-3 h-3 rounded-[3px] bg-emerald-500 opacity-40"></div>
+                  <div className="w-3 h-3 rounded-[3px] bg-emerald-500 opacity-60"></div>
+                  <div className="w-3 h-3 rounded-[3px] bg-emerald-500 opacity-80"></div>
+                  <div className="w-3 h-3 rounded-[3px] bg-emerald-500 opacity-100"></div>
+                </div>
+                <span>More active</span>
               </div>
             </div>
           </LayoutWrapperBlock>

@@ -5,35 +5,32 @@ export async function GET() {
   try {
     const db = getDb();
     
-    // 1. Team Workload (Hours per member)
+    // 1. Team Workload (Task & Ticket Actions per member)
     const workloadRaw = db.prepare(`
-      SELECT member_name, SUM(duration_seconds) as total_seconds
-      FROM time_logs
-      GROUP BY member_name
-    `).all() as { member_name: string, total_seconds: number }[];
+      SELECT user_name as member_name, COUNT(*) as total_actions
+      FROM audit_logs
+      WHERE module IN ('Tasks', 'Tickets') AND user_name != 'System' AND user_name != 'System Bot'
+      GROUP BY user_name
+      ORDER BY total_actions DESC
+      LIMIT 10
+    `).all() as { member_name: string, total_actions: number }[];
 
     const workload = workloadRaw.map(w => ({
       name: w.member_name,
-      hours: Math.round((w.total_seconds / 3600) * 10) / 10
-    })).sort((a, b) => b.hours - a.hours);
+      count: w.total_actions
+    }));
 
     // 2. Heatmap: Activity count per day (Last 30 days)
-    // We'll count both "tickets resolved" from daily_logs and "time logged" from time_logs
     const heatmapRaw = db.prepare(`
-      SELECT date(start_time) as log_date, COUNT(*) as count, SUM(duration_seconds) as seconds
-      FROM time_logs
-      WHERE start_time >= date('now', '-30 days')
-      GROUP BY date(start_time)
+      SELECT date(timestamp) as log_date, COUNT(*) as count, COUNT(*) * 5 as intensity_score
+      FROM audit_logs
+      WHERE timestamp >= date('now', '-30 days')
+      GROUP BY date(timestamp)
       ORDER BY log_date ASC
-    `).all() as { log_date: string, count: number, seconds: number }[];
+    `).all() as { log_date: string, count: number, intensity_score: number }[];
 
-    // 3. Project vs Time Completion
-    const projectStatsRaw = db.prepare(`
-      SELECT t.ticket_id as project_ref, SUM(t.time_spent) as total_time
-      FROM tasks t
-      WHERE t.ticket_id != ''
-      GROUP BY t.ticket_id
-    `).all() as { project_ref: string, total_time: number }[];
+    // 3. Project vs Time Completion (Keep existing or remove if unused, let's keep empty array for now)
+    const projectStatsRaw: string[] = [];
 
     return NextResponse.json({
       workload,

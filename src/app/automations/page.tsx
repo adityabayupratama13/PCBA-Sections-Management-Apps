@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Trash2, Zap, ArrowRight, Activity, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Plus, Trash2, Zap, ArrowRight, Activity, ToggleLeft, ToggleRight, Settings } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 
 interface Rule {
@@ -17,6 +18,7 @@ interface Rule {
 }
 
 export default function AutomationsPage() {
+  const { role } = useAuth();
   const [rules, setRules] = useState<Rule[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAdding, setIsAdding] = useState(false);
@@ -107,6 +109,17 @@ export default function AutomationsPage() {
     }
   };
 
+  if (!['IT Manager', 'IT Leader', 'IT Supervisor'].includes(role || '')) {
+    return (
+      <div className="flex h-[calc(100vh-64px)] items-center justify-center p-8">
+        <div className="text-center space-y-4">
+          <Settings className="w-16 h-16 text-muted-foreground opacity-20 mx-auto" />
+          <h2 className="text-2xl font-bold text-foreground">Access Restricted</h2>
+          <p className="text-muted-foreground">Automations Engine is only available to IT Management and Supervisors.</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-[calc(100vh-64px)] overflow-y-auto custom-scrollbar p-6 lg:p-10 relative">

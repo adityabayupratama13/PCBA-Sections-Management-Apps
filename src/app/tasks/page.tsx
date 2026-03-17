@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { Plus, Search, Calendar as CalendarIcon, Users, Check, ChevronLeft, ChevronRight, FileDown, Play, Square } from 'lucide-react';
+import { Plus, Search, Calendar as CalendarIcon, Users, Check, ChevronLeft, ChevronRight, FileDown } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -25,69 +25,11 @@ interface Task {
   due_date: string;
   resolution?: string;
   attachments?: string; // JSON array string
-  time_spent?: number;
 }
 
 interface TeamMember { id: number; name: string; status: string; }
 
 const COLUMNS: TaskState[] = ['Backlog', 'In Progress', 'Review', 'Done'];
-
-function TaskTimer({ task, onLogTime }: { task: Task, onLogTime: (taskId: number, seconds: number) => void }) {
-  const [active, setActive] = useState(false);
-  const [elapsed, setElapsed] = useState(task.time_spent || 0);
-
-  // Sync elapsed if the task prop changes underneath us
-  useEffect(() => {
-    if (!active) setElapsed(task.time_spent || 0);
-  }, [task.time_spent, active]);
-
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (active) {
-      interval = setInterval(() => {
-        setElapsed(prev => prev + 1);
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, [active]);
-
-  const toggleTimer = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (active) {
-      // Stopping timer, emit diff
-      const diff = Math.max(0, elapsed - (task.time_spent || 0));
-      setActive(false);
-      if (diff > 0) onLogTime(task.id, diff);
-    } else {
-      // Start timer
-      setActive(true);
-    }
-  };
-
-  const formatTime = (secs: number) => {
-    if (!secs) return '0s';
-    if (secs < 60) return `${secs}s`;
-    const m = Math.floor(secs / 60);
-    if (m < 60) return `${m}m ${secs % 60}s`;
-    const h = Math.floor(m / 60);
-    return `${h}h ${m % 60}m`;
-  };
-
-  return (
-    <button 
-      onClick={toggleTimer} 
-      title={active ? "Stop Timer" : "Start Timer"}
-      className={`text-[10px] font-mono px-2 py-0.5 rounded border transition-colors flex items-center gap-1.5 ${
-        active 
-          ? 'bg-red-500/10 text-red-500 border-red-500/20 shadow-sm animate-pulse' 
-          : 'bg-secondary text-muted-foreground border-border hover:bg-secondary/80 hover:text-foreground'
-      }`}
-    >
-      {active ? <Square className="w-2.5 h-2.5 fill-current" /> : <Play className="w-2.5 h-2.5 fill-current" />}
-      {formatTime(elapsed)}
-    </button>
-  );
-}
 
 export default function TasksPage() {
   const { data: tasks, loading, create, update, remove } = useApi<Task>('tasks');
@@ -230,21 +172,6 @@ export default function TasksPage() {
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
     await update({ ...task, status: newStatus, dueDate: task.due_date, userName: currentUser?.name } as unknown as Task & Record<string, unknown>);
-  };
-
-  const handleTimeLog = async (taskId: number, durationSeconds: number) => {
-    try {
-      const res = await fetch('/api/time', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ task_id: taskId, member_name: currentUser?.name || 'System', duration_seconds: durationSeconds })
-      });
-      if (res.ok) {
-        // Silently update the local task store without full API refetch
-        const t = tasks.find(x => x.id === taskId);
-        if (t) t.time_spent = (t.time_spent || 0) + durationSeconds;
-      }
-    } catch (err) { console.error('Time log error:', err); }
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -415,23 +342,20 @@ export default function TasksPage() {
                       </div>
                     )}
 
-                      <div className="flex items-center justify-between mt-3 pt-3 border-t border-border/50">
-                        <div className="flex items-center gap-2">
-                          <Users className="w-3 h-3 text-muted-foreground shrink-0" />
-                          <span className="text-[10px] text-muted-foreground truncate max-w-[100px]">
-                            {task.assignee.split(', ').filter(a => allMembers.some(m => m.name === a) || a === 'Unassigned').join(', ') || 'Unassigned'}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          {task.due_date && (
-                            <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                              <CalendarIcon className="w-3 h-3" />{new Date(task.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                            </span>
-                          )}
-                          <TaskTimer task={task} onLogTime={handleTimeLog} />
-                        </div>
+                    <div className="flex items-center justify-between mt-3">
+                      <div className="flex items-center gap-1">
+                        <Users className="w-3 h-3 text-muted-foreground" />
+                        <span className="text-[10px] text-muted-foreground">
+                          {task.assignee.split(', ').filter(a => allMembers.some(m => m.name === a) || a === 'Unassigned').join(', ') || 'Unassigned'}
+                        </span>
                       </div>
-                    </KanbanCard>
+                      {task.due_date && (
+                        <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                          <CalendarIcon className="w-3 h-3" />{new Date(task.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        </span>
+                      )}
+                    </div>
+                  </KanbanCard>
                 )
               })}
             </KanbanColumn>
