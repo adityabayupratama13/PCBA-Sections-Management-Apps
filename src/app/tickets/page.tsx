@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { Search, AlertCircle, Edit2, Trash2, Plus, ChevronLeft, ChevronRight, FileDown } from 'lucide-react';
+import { Search, AlertCircle, Edit2, Trash2, Plus, ChevronLeft, ChevronRight, FileDown, BookOpen } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -21,6 +21,7 @@ interface Ticket {
   created_date: string;
   resolution?: string;
   attachments?: string; // JSON Array string
+  linked_article?: string;
 }
 
 export default function TicketsPage() {
@@ -35,10 +36,12 @@ export default function TicketsPage() {
   const [uploading, setUploading] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
   const [ticketComments, setTicketComments] = useState<Comment[]>([]);
+  const [articles, setArticles] = useState<{id: number, title: string}[]>([]);
   const { currentUser } = useAuth();
 
   useEffect(() => {
     setFilterDate(new Date().toISOString().split('T')[0]);
+    fetch('/api/articles').then(r => r.json()).then(setArticles).catch(console.error);
   }, []);
 
   useEffect(() => {
@@ -173,6 +176,7 @@ export default function TicketsPage() {
       resolution: formData.get('resolution') as string,
       attachments: JSON.stringify(uploadedFiles),
       comments: JSON.stringify(ticketComments),
+      linked_article: formData.get('linked_article') as string,
       userName: currentUser?.name || 'System',
     };
     if (editingTicket) {
@@ -359,6 +363,19 @@ export default function TicketsPage() {
           <div className="border-t border-border pt-4 mt-2">
             <label className="block text-sm font-medium text-muted-foreground mb-1.5">Problem Solving (Resolution)</label>
             <textarea name="resolution" rows={3} defaultValue={editingTicket?.resolution} placeholder="Document how this ticket was resolved..." className={inputClass}></textarea>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-muted-foreground mb-1.5">Link Knowledge Base Article</label>
+            <select name="linked_article" defaultValue={editingTicket?.linked_article || ''} className={inputClass + ' cursor-pointer'}>
+              <option value="">-- No linked article --</option>
+              {articles.map(a => <option key={a.id} value={a.id}>{a.title}</option>)}
+            </select>
+            {editingTicket?.linked_article && (
+              <a href="/knowledge" target="_blank" className="text-xs text-primary hover:underline mt-1 inline-flex items-center gap-1">
+                <BookOpen className="w-3 h-3" /> View Linked Article
+              </a>
+            )}
           </div>
 
           <div>

@@ -211,6 +211,7 @@ function initSchema(db: Database.Database) {
   try { db.exec('ALTER TABLE tasks ADD COLUMN attachments TEXT DEFAULT "[]"'); } catch {}
   try { db.exec('ALTER TABLE tickets ADD COLUMN resolution TEXT DEFAULT ""'); } catch {}
   try { db.exec('ALTER TABLE tickets ADD COLUMN attachments TEXT DEFAULT "[]"'); } catch {}
+  try { db.exec('ALTER TABLE tickets ADD COLUMN linked_article TEXT DEFAULT ""'); } catch {}
   try { db.exec('ALTER TABLE tasks ADD COLUMN comments TEXT DEFAULT "[]"'); } catch {}
   try { db.exec('ALTER TABLE tickets ADD COLUMN comments TEXT DEFAULT "[]"'); } catch {}
   try { db.exec('ALTER TABLE members ADD COLUMN join_date TEXT DEFAULT ""'); } catch {}

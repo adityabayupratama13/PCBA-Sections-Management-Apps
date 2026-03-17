@@ -21,9 +21,9 @@ export async function POST(req: NextRequest) {
   try {
     const count = db.prepare('SELECT COUNT(*) as c FROM tickets').get() as { c: number };
     const id = body.id || `TKT-${String(count.c + 100).padStart(3, '0')}`;
-    db.prepare('INSERT INTO tickets (id, title, reporter, priority, status, created_date, resolution, attachments, comments) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)').run(
+    db.prepare('INSERT INTO tickets (id, title, reporter, priority, status, created_date, resolution, attachments, comments, linked_article) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').run(
       id, body.title, body.reporter, body.priority || 'Medium', body.status || 'Backlog', body.createdDate || new Date().toISOString(),
-      body.resolution || '', body.attachments || '[]', body.comments || '[]'
+      body.resolution || '', body.attachments || '[]', body.comments || '[]', body.linked_article || ''
     );
 
     // Auto-create a linked Task for this ticket
@@ -53,8 +53,8 @@ export async function PUT(req: NextRequest) {
   const body = await req.json();
   const db = getDb();
 
-  db.prepare("UPDATE tickets SET title=?, reporter=?, priority=?, status=?, resolution=?, attachments=?, comments=?, updated_at=datetime('now', 'localtime') WHERE id=?")
-    .run(body.title, body.reporter, body.priority, body.status, body.resolution || '', body.attachments || '[]', body.comments || '[]', body.id);
+  db.prepare("UPDATE tickets SET title=?, reporter=?, priority=?, status=?, resolution=?, attachments=?, comments=?, linked_article=?, updated_at=datetime('now', 'localtime') WHERE id=?")
+    .run(body.title, body.reporter, body.priority, body.status, body.resolution || '', body.attachments || '[]', body.comments || '[]', body.linked_article || '', body.id);
 
   // Sync: update any linked task's status automatically
   const linkedTask = db.prepare("SELECT id FROM tasks WHERE ticket_id = ?").get(body.id) as { id: number } | undefined;
