@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { Sidebar } from "@/components/Sidebar";
 import { Header } from "@/components/Header";
 import { PageTransition } from "@/components/PageTransition";
+import { CommandPalette } from "@/components/CommandPalette";
 import { AnimatePresence } from "framer-motion";
 
 export function LayoutWrapper({ children }: { children: React.ReactNode }) {
@@ -37,6 +38,7 @@ export function LayoutWrapper({ children }: { children: React.ReactNode }) {
           </AnimatePresence>
         </main>
       </div>
+      <CommandPalette />
     </div>
   );
 }

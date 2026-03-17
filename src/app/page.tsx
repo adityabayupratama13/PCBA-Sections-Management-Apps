@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState, useRef } from 'react';
-import { Users, Ticket, CheckSquare, Activity, Clock, BarChart3, AlertCircle, Briefcase, ArrowRight } from 'lucide-react';
+import { Users, Ticket, CheckSquare, Activity, Clock, BarChart3, AlertCircle, Briefcase, ArrowRight, Settings2, GripHorizontal } from 'lucide-react';
 import anime from 'animejs';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
@@ -20,7 +20,18 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // Layout State
+  const defaultLayout = ['stats', 'charts', 'workload'];
+  const [layout, setLayout] = useState<string[]>(defaultLayout);
+  const [isEditingLayout, setIsEditingLayout] = useState(false);
+  const [draggedItem, setDraggedItem] = useState<string | null>(null);
+
   useEffect(() => {
+    const saved = localStorage.getItem('dashboard_layout');
+    if (saved) {
+      try { setLayout(JSON.parse(saved)); } catch {}
+    }
+    
     Promise.all([
       fetch('/api/members').then(r => r.json()),
       fetch('/api/tickets').then(r => r.json()),
@@ -98,12 +109,12 @@ export default function DashboardPage() {
     return 'bg-gray-500/15 text-gray-400';
   };
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?: { color?: string; payload?: { fill?: string }; value: number }[]; label?: string }) => {
     if (active && payload && payload.length) {
       return (
         <div className="bg-white dark:bg-surface border border-border rounded-xl shadow-xl p-3 text-xs animate-in fade-in zoom-in-95 duration-200">
           <p className="font-semibold text-foreground mb-2">{label}</p>
-          {payload.map((entry: any, index: number) => (
+          {payload.map((entry: { color?: string; payload?: { fill?: string }; value: number }, index: number) => (
             <div key={index} className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full shadow-sm" style={{ backgroundColor: entry.color || entry.payload?.fill }} />
@@ -118,7 +129,7 @@ export default function DashboardPage() {
     return null;
   };
 
-  const PieTooltip = ({ active, payload }: any) => {
+  const PieTooltip = ({ active, payload }: { active?: boolean; payload?: { payload: { color?: string; fill?: string; name?: string; value: number } }[] }) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
       const total = ticketPie.reduce((s, d) => s + d.value, 0);
@@ -141,161 +152,244 @@ export default function DashboardPage() {
 
   if (loading) return <div className="flex items-center justify-center h-64"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>;
 
+  const handleDragStart = (e: React.DragEvent, id: string) => {
+    if (!isEditingLayout) return;
+    setDraggedItem(id);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e: React.DragEvent, id: string) => {
+    e.preventDefault();
+    if (!isEditingLayout || !draggedItem || draggedItem === id) return;
+    const newLayout = [...layout];
+    const dragIndex = newLayout.indexOf(draggedItem);
+    const dropIndex = newLayout.indexOf(id);
+    newLayout.splice(dragIndex, 1);
+    newLayout.splice(dropIndex, 0, draggedItem);
+    setLayout(newLayout);
+  };
+
+  const handleDragEnd = () => {
+    if (isEditingLayout) {
+      localStorage.setItem('dashboard_layout', JSON.stringify(layout));
+      setDraggedItem(null);
+    }
+  };
+
+  const toggleEditLayout = () => {
+    if (isEditingLayout) {
+      localStorage.setItem('dashboard_layout', JSON.stringify(layout));
+    }
+    setIsEditingLayout(!isEditingLayout);
+  };
+
+  const LayoutWrapperBlock = ({ id, children }: { id: string, children: React.ReactNode }) => (
+    <div
+      draggable={isEditingLayout}
+      onDragStart={(e) => handleDragStart(e, id)}
+      onDragOver={(e) => handleDragOver(e, id)}
+      onDragEnd={handleDragEnd}
+      className={`relative transition-all ${isEditingLayout ? 'p-4 border-2 border-dashed border-primary/40 rounded-2xl bg-primary/5 cursor-grab active:cursor-grabbing mb-4' : 'mb-6'}`}
+      style={draggedItem === id ? { opacity: 0.5 } : {}}
+    >
+      {isEditingLayout && (
+        <div className="absolute -top-3 -left-3 w-8 h-8 bg-primary rounded-full text-white flex items-center justify-center shadow-lg z-10 cursor-grab">
+          <GripHorizontal className="w-4 h-4" />
+        </div>
+      )}
+      <div className={isEditingLayout ? 'pointer-events-none' : ''}>
+        {children}
+      </div>
+    </div>
+  );
+
   return (
-    <div ref={containerRef} className="space-y-6 pb-8">
-      <div className="animate-enter opacity-0">
-        <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
-        <p className="text-muted-foreground mt-1">
-          {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-        </p>
+    <div className="max-w-7xl mx-auto pb-12" ref={containerRef}>
+      
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4 mb-8 border-b pb-4" style={{ borderColor: 'var(--border)' }}>
+        <div className="animate-enter opacity-0">
+          <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
+          <p className="text-muted-foreground mt-1">
+            {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+          </p>
+        </div>
+        <button
+          onClick={toggleEditLayout}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${isEditingLayout ? 'bg-primary text-white shadow-md' : 'bg-surface border border-border text-foreground hover:bg-primary/5 hover:border-primary/30'}`}
+        >
+          <Settings2 className="w-4 h-4" />
+          {isEditingLayout ? 'Done' : 'Edit Layout'}
+        </button>
       </div>
 
-      {/* Stat Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
-        {[
-          { label: 'Team Members', val: stats.members, sub: 'Active Accounts', icon: <Users className="w-5 h-5" />, cls: 'text-primary bg-primary/10 border-primary/20' },
-          { label: 'Active Tickets', val: stats.tickets.open + stats.tickets.inProgress, sub: `${stats.tickets.resolved} resolved`, icon: <Ticket className="w-5 h-5" />, cls: 'text-orange-400 bg-orange-500/10 border-orange-500/20' },
-          { label: 'Tasks', val: stats.tasks.total, sub: `${stats.tasks.done} done`, icon: <CheckSquare className="w-5 h-5" />, cls: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
-          { label: 'Daily Logs', val: stats.logs, sub: 'All time', icon: <Activity className="w-5 h-5" />, cls: 'text-violet-400 bg-violet-500/10 border-violet-500/20' },
-          { label: 'Positions', val: stats.positions, sub: 'Jabatan', icon: <Briefcase className="w-5 h-5" />, cls: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20' },
-        ].map(s => (
-          <div key={s.label} className="animate-enter opacity-0 rounded-2xl border p-4 flex items-center gap-3" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
-            <div className={`p-2.5 rounded-xl border flex-shrink-0 ${s.cls}`}>{s.icon}</div>
-            <div>
-              <p className="text-xs text-muted-foreground">{s.label}</p>
-              <p className="text-2xl font-bold text-foreground">{s.val}</p>
-              <p className="text-[10px] text-muted-foreground">{s.sub}</p>
+      {layout.map((blockId) => {
+        if (blockId === 'stats') return (
+          <LayoutWrapperBlock key="stats" id="stats">
+            {/* Stat Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
+              {[
+                { label: 'Team Members', val: stats.members, sub: 'Active Accounts', icon: <Users className="w-5 h-5" />, cls: 'text-primary bg-primary/10 border-primary/20' },
+                { label: 'Active Tickets', val: stats.tickets.open + stats.tickets.inProgress, sub: `${stats.tickets.resolved} resolved`, icon: <Ticket className="w-5 h-5" />, cls: 'text-orange-400 bg-orange-500/10 border-orange-500/20' },
+                { label: 'Tasks', val: stats.tasks.total, sub: `${stats.tasks.done} done`, icon: <CheckSquare className="w-5 h-5" />, cls: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
+                { label: 'Daily Logs', val: stats.logs, sub: 'All time', icon: <Activity className="w-5 h-5" />, cls: 'text-violet-400 bg-violet-500/10 border-violet-500/20' },
+                { label: 'Positions', val: stats.positions, sub: 'Jabatan', icon: <Briefcase className="w-5 h-5" />, cls: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20' },
+              ].map(s => (
+                <div key={s.label} className="animate-enter opacity-0 rounded-2xl border p-4 flex items-center gap-3" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+                  <div className={`p-2.5 rounded-xl border flex-shrink-0 ${s.cls}`}>{s.icon}</div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">{s.label}</p>
+                    <p className="text-2xl font-bold text-foreground">{s.val}</p>
+                    <p className="text-[10px] text-muted-foreground">{s.sub}</p>
+                  </div>
+                </div>
+              ))}
             </div>
-          </div>
-        ))}
-      </div>
+          </LayoutWrapperBlock>
+        );
 
-      {/* Charts Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="animate-enter opacity-0 rounded-2xl p-5 border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
-          <h2 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-4"><BarChart3 className="w-4 h-4 text-primary" /> Task Status</h2>
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={taskBar} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-              <XAxis dataKey="name" tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }} axisLine={false} tickLine={false} allowDecimals={false} />
-              <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--muted)', opacity: 0.4 }} />
-              <Bar dataKey="count" radius={[4, 4, 0, 0]}>
-                {taskBar.map((e, i) => <Cell key={i} fill={e.fill} />)}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+        if (blockId === 'charts') return (
+          <LayoutWrapperBlock key="charts" id="charts">
+            {/* Charts Row */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div className="animate-enter opacity-0 rounded-2xl p-5 border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+                <h2 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-4"><BarChart3 className="w-4 h-4 text-primary" /> Task Status</h2>
+                <ResponsiveContainer width="100%" height={200}>
+                  <BarChart data={taskBar} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                    <XAxis dataKey="name" tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }} axisLine={false} tickLine={false} allowDecimals={false} />
+                    <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--muted)', opacity: 0.4 }} />
+                    <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+                      {taskBar.map((e, i) => <Cell key={i} fill={e.fill} />)}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
 
-        <div className="animate-enter opacity-0 rounded-2xl p-5 border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
-          <h2 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-4"><AlertCircle className="w-4 h-4 text-orange-400" /> Ticket Breakdown</h2>
-          {ticketPie.length > 0 ? (
-            <ResponsiveContainer width="100%" height={200}>
-              <PieChart>
-                <Pie data={ticketPie} cx="50%" cy="50%" innerRadius={50} outerRadius={75} paddingAngle={3} dataKey="value">
-                  {ticketPie.map((e, i) => <Cell key={i} fill={e.color} />)}
-                </Pie>
-                <Tooltip content={<PieTooltip />} />
-                <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} />
-              </PieChart>
-            </ResponsiveContainer>
-          ) : <p className="text-sm text-muted-foreground text-center py-12">No tickets yet</p>}
-        </div>
-      </div>
+              <div className="animate-enter opacity-0 rounded-2xl p-5 border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+                <h2 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-4"><AlertCircle className="w-4 h-4 text-orange-400" /> Ticket Breakdown</h2>
+                {ticketPie.length > 0 ? (
+                  <ResponsiveContainer width="100%" height={200}>
+                    <PieChart>
+                      <Pie data={ticketPie} cx="50%" cy="50%" innerRadius={50} outerRadius={75} paddingAngle={3} dataKey="value">
+                        {ticketPie.map((e, i) => <Cell key={i} fill={e.color} />)}
+                      </Pie>
+                      <Tooltip content={<PieTooltip />} />
+                      <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11 }} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                ) : <p className="text-sm text-muted-foreground text-center py-12">No tickets yet</p>}
+              </div>
+            </div>
+          </LayoutWrapperBlock>
+        );
 
-      {/* Workload + Team */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Workload Distribution */}
-        <div className="animate-enter opacity-0 rounded-2xl p-5 border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
-          <h2 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-4"><BarChart3 className="w-4 h-4 text-violet-400" /> Workload Distribution</h2>
-          {workloads.length > 0 ? (
-            <div className="space-y-3">
-              {workloads.map(w => {
-                const max = Math.max(...workloads.map(x => x.tasks));
-                const pct = max > 0 ? (w.tasks / max) * 100 : 0;
-                return (
-                  <div key={w.name} className="flex items-center gap-3">
-                    <span className="text-xs text-foreground w-24 truncate font-medium">{w.name}</span>
-                    <div className="flex-1 h-5 rounded-full overflow-hidden" style={{ background: 'var(--muted)' }}>
-                      <div className="h-full rounded-full bg-gradient-to-r from-primary to-violet-500 transition-all flex items-center pl-2" style={{ width: `${pct}%` }}>
-                        <span className="text-[10px] text-white font-bold">{w.tasks}</span>
+        if (blockId === 'workload') return (
+          <LayoutWrapperBlock key="workload" id="workload">
+            {/* Workload + Team */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {/* Workload Distribution */}
+              <div className="animate-enter opacity-0 rounded-2xl p-5 border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+                <h2 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-4"><BarChart3 className="w-4 h-4 text-violet-400" /> Workload Distribution</h2>
+                {workloads.length > 0 ? (
+                  <div className="space-y-3">
+                    {workloads.map(w => {
+                      const max = Math.max(...workloads.map(x => x.tasks));
+                      const pct = max > 0 ? (w.tasks / max) * 100 : 0;
+                      return (
+                        <div key={w.name} className="flex items-center gap-3">
+                          <span className="text-xs text-foreground w-24 truncate font-medium">{w.name}</span>
+                          <div className="flex-1 h-5 rounded-full overflow-hidden" style={{ background: 'var(--muted)' }}>
+                            <div className="h-full rounded-full bg-gradient-to-r from-primary to-violet-500 transition-all flex items-center pl-2" style={{ width: `${pct}%` }}>
+                              <span className="text-[10px] text-white font-bold">{w.tasks}</span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : <p className="text-sm text-muted-foreground text-center py-8">No tasks assigned yet</p>}
+              </div>
+
+              {/* Team Members */}
+              <div className="animate-enter opacity-0 rounded-2xl p-5 border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+                <h2 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-4"><Users className="w-4 h-4 text-primary" /> Team Members</h2>
+                <div className="space-y-2 max-h-48 overflow-y-auto custom-scrollbar">
+                  {teamMembers.map((m, i) => (
+                    <div key={i} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/30 transition-colors">
+                      <div className="w-7 h-7 rounded-lg bg-primary/15 text-primary flex items-center justify-center text-xs font-bold border border-primary/20 flex-shrink-0">
+                        {m.name.charAt(0)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-semibold text-foreground truncate">{m.name}</p>
+                        <p className="text-[10px] text-muted-foreground">{m.role}</p>
+                      </div>
+                      <span className="flex items-center gap-1">
+                        <span className={`w-1.5 h-1.5 rounded-full ${m.status === 'Active' ? 'bg-emerald-400' : 'bg-gray-400'}`} />
+                        <span className="text-[10px] text-muted-foreground">{m.status}</span>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </LayoutWrapperBlock>
+        );
+
+        if (blockId === 'activityWorkflow') return (
+          <LayoutWrapperBlock key="activityWorkflow" id="activityWorkflow">
+            {/* Activity + Workflow Info */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              <div className="lg:col-span-2 animate-enter opacity-0 rounded-2xl p-5 border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+                <h2 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-4"><Clock className="w-4 h-4 text-primary" /> Recent Activity</h2>
+                <div className="space-y-1.5 max-h-64 overflow-y-auto custom-scrollbar">
+                  {recentLogs.length === 0 && <p className="text-sm text-muted-foreground text-center py-6">No activity yet</p>}
+                  {recentLogs.map(log => (
+                    <div key={log.id} className="flex items-start gap-3 p-2 rounded-lg hover:bg-muted/30 transition-colors">
+                      <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded flex-shrink-0 mt-0.5 ${actionStyle(log.action)}`}>{log.action}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs font-medium text-foreground truncate">{log.details}</p>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">
+                          {log.user_name} · {log.module} · {new Date(log.timestamp).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        </p>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
+                  ))}
+                </div>
+              </div>
+
+              {/* Workflow Guide */}
+              <div className="animate-enter opacity-0 rounded-2xl p-5 border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+                <h2 className="text-sm font-semibold text-foreground mb-4">📋 IT Workflow</h2>
+                <div className="space-y-3">
+                  {[
+                    { step: '1', label: 'Ticket masuk', desc: 'Job request dari user/department' },
+                    { step: '2', label: 'Create Task', desc: 'Dari ticket → assign ke team' },
+                    { step: '3', label: 'Daily Log', desc: 'Auto-recorded dari ticket/task' },
+                    { step: '4', label: 'Project', desc: 'Link tasks & schedules' },
+                  ].map(s => (
+                    <div key={s.step} className="flex items-start gap-3">
+                      <div className="w-6 h-6 rounded-full bg-primary/15 text-primary flex items-center justify-center text-xs font-bold border border-primary/20 flex-shrink-0">{s.step}</div>
+                      <div>
+                        <p className="text-xs font-semibold text-foreground">{s.label}</p>
+                        <p className="text-[10px] text-muted-foreground">{s.desc}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-4 flex items-center gap-2 p-2 rounded-lg text-[10px] text-muted-foreground" style={{ background: 'var(--muted)' }}>
+                  <ArrowRight className="w-3 h-3 text-emerald-400 flex-shrink-0" />
+                  <span>Ticket → Task → Daily Log (auto-synced)</span>
+                </div>
+              </div>
             </div>
-          ) : <p className="text-sm text-muted-foreground text-center py-8">No tasks assigned yet</p>}
-        </div>
+          </LayoutWrapperBlock>
+        );
 
-        {/* Team Members */}
-        <div className="animate-enter opacity-0 rounded-2xl p-5 border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
-          <h2 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-4"><Users className="w-4 h-4 text-primary" /> Team Members</h2>
-          <div className="space-y-2 max-h-48 overflow-y-auto custom-scrollbar">
-            {teamMembers.map((m, i) => (
-              <div key={i} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/30 transition-colors">
-                <div className="w-7 h-7 rounded-lg bg-primary/15 text-primary flex items-center justify-center text-xs font-bold border border-primary/20 flex-shrink-0">
-                  {m.name.charAt(0)}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold text-foreground truncate">{m.name}</p>
-                  <p className="text-[10px] text-muted-foreground">{m.role}</p>
-                </div>
-                <span className="flex items-center gap-1">
-                  <span className={`w-1.5 h-1.5 rounded-full ${m.status === 'Active' ? 'bg-emerald-400' : 'bg-gray-400'}`} />
-                  <span className="text-[10px] text-muted-foreground">{m.status}</span>
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+        return null;
+      })}
 
-      {/* Activity + Workflow Info */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <div className="lg:col-span-2 animate-enter opacity-0 rounded-2xl p-5 border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
-          <h2 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-4"><Clock className="w-4 h-4 text-primary" /> Recent Activity</h2>
-          <div className="space-y-1.5 max-h-64 overflow-y-auto custom-scrollbar">
-            {recentLogs.length === 0 && <p className="text-sm text-muted-foreground text-center py-6">No activity yet</p>}
-            {recentLogs.map(log => (
-              <div key={log.id} className="flex items-start gap-3 p-2 rounded-lg hover:bg-muted/30 transition-colors">
-                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded flex-shrink-0 mt-0.5 ${actionStyle(log.action)}`}>{log.action}</span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-foreground truncate">{log.details}</p>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">
-                    {log.user_name} · {log.module} · {new Date(log.timestamp).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Workflow Guide */}
-        <div className="animate-enter opacity-0 rounded-2xl p-5 border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
-          <h2 className="text-sm font-semibold text-foreground mb-4">📋 IT Workflow</h2>
-          <div className="space-y-3">
-            {[
-              { step: '1', label: 'Ticket masuk', desc: 'Job request dari user/department' },
-              { step: '2', label: 'Create Task', desc: 'Dari ticket → assign ke team' },
-              { step: '3', label: 'Daily Log', desc: 'Auto-recorded dari ticket/task' },
-              { step: '4', label: 'Project', desc: 'Link tasks & schedules' },
-            ].map(s => (
-              <div key={s.step} className="flex items-start gap-3">
-                <div className="w-6 h-6 rounded-full bg-primary/15 text-primary flex items-center justify-center text-xs font-bold border border-primary/20 flex-shrink-0">{s.step}</div>
-                <div>
-                  <p className="text-xs font-semibold text-foreground">{s.label}</p>
-                  <p className="text-[10px] text-muted-foreground">{s.desc}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="mt-4 flex items-center gap-2 p-2 rounded-lg text-[10px] text-muted-foreground" style={{ background: 'var(--muted)' }}>
-            <ArrowRight className="w-3 h-3 text-emerald-400 flex-shrink-0" />
-            <span>Ticket → Task → Daily Log (auto-synced)</span>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }

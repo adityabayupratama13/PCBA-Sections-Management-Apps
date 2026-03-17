@@ -4,9 +4,8 @@ import { Plus, Search, Calendar as CalendarIcon, Users, Check, ChevronLeft, Chev
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { DataTable } from '@/components/DataTable';
-import { KanbanColumn, KanbanCard } from '@/components/KanbanBoard';
 import { Modal, ConfirmDialog } from '@/components/Modal';
+import { KanbanColumn, KanbanCard } from '@/components/KanbanBoard';
 import { CommentsSection, type Comment } from '@/components/CommentsSection';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
@@ -56,6 +55,21 @@ export default function TasksPage() {
   useEffect(() => {
     setFilterDate(new Date().toISOString().split('T')[0]);
   }, []);
+
+  useEffect(() => {
+    if (tasks.length > 0 && typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const openId = params.get('openId');
+      if (openId) {
+        const t = tasks.find(x => x.id.toString() === openId);
+        if (t && !isModalOpen) {
+          setTimeout(() => openEditModal(t), 100);
+          window.history.replaceState(null, '', '/tasks');
+        }
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tasks]);
 
   const navigateDate = (days: number) => {
     if (!filterDate) {
@@ -144,7 +158,7 @@ export default function TasksPage() {
     const initialAssignees = task.assignee ? task.assignee.split(', ').filter(a => validNames.includes(a)) : [];
     setSelectedAssignees(initialAssignees);
     try { setUploadedFiles(JSON.parse(task.attachments || '[]')); } catch { setUploadedFiles([]); }
-    try { setTaskComments(JSON.parse((task as any).comments || '[]')); } catch { setTaskComments([]); }
+    try { setTaskComments(JSON.parse((task as unknown as Record<string, unknown>).comments as string || '[]')); } catch { setTaskComments([]); }
     setIsModalOpen(true);
   };
 

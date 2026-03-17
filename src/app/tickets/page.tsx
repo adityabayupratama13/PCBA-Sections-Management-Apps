@@ -7,6 +7,7 @@ import autoTable from 'jspdf-autotable';
 import { DataTable } from '@/components/DataTable';
 import { Modal, ConfirmDialog } from '@/components/Modal';
 import { CommentsSection, type Comment } from '@/components/CommentsSection';
+import { getTicketSLA } from '@/lib/sla';
 import { toast } from 'sonner';
 import { useAuth } from '@/context/AuthContext';
 import { useApi } from '@/hooks/useApi';
@@ -39,6 +40,21 @@ export default function TicketsPage() {
   useEffect(() => {
     setFilterDate(new Date().toISOString().split('T')[0]);
   }, []);
+
+  useEffect(() => {
+    if (tickets.length > 0 && typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const openId = params.get('openId');
+      if (openId) {
+        const t = tickets.find(x => x.id === openId);
+        if (t && !isModalOpen) {
+          setTimeout(() => openEditModal(t), 100);
+          window.history.replaceState(null, '', '/tickets');
+        }
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tickets]);
 
   const navigateDate = (days: number) => {
     if (!filterDate) {
@@ -128,7 +144,7 @@ export default function TicketsPage() {
   const openEditModal = (ticket: Ticket) => { 
     setEditingTicket(ticket); 
     try { setUploadedFiles(JSON.parse(ticket.attachments || '[]')); } catch { setUploadedFiles([]); }
-    try { setTicketComments(JSON.parse((ticket as any).comments || '[]')); } catch { setTicketComments([]); }
+    try { setTicketComments(JSON.parse((ticket as unknown as Record<string, unknown>).comments as string || '[]')); } catch { setTicketComments([]); }
     setIsModalOpen(true); 
   };
 
@@ -194,19 +210,9 @@ export default function TicketsPage() {
     { header: 'ID', accessor: 'id' as keyof Ticket, className: 'font-mono text-primary font-bold whitespace-nowrap' },
     { 
       header: 'Title', 
-      accessor: (t: Ticket) => {
-        let isStale = false;
-        if (t.status !== 'Done' && t.status !== 'Closed') {
-          const diffDays = (new Date().getTime() - new Date(t.created_date).getTime()) / (1000 * 3600 * 24);
-          if (diffDays > 1) isStale = true;
-        }
-        return (
-          <div className="flex flex-col items-start gap-1">
-            <span className="font-medium text-foreground">{t.title}</span>
-            {isStale && <span className="inline-flex items-center rounded-sm bg-destructive/10 px-1.5 py-0.5 text-[10px] font-semibold text-destructive ring-1 ring-inset ring-destructive/20 leading-none">⚠️ Overdue</span>}
-          </div>
-        );
-      }
+      accessor: (t: Ticket) => (
+        <span className="font-medium text-foreground">{t.title}</span>
+      )
     },
     { header: 'Reporter', accessor: 'reporter' as keyof Ticket, className: 'whitespace-nowrap' },
     {
@@ -227,6 +233,23 @@ export default function TicketsPage() {
       header: 'Created', accessor: (t: Ticket) => {
         const d = new Date(t.created_date);
         return <span className="text-muted-foreground text-xs whitespace-nowrap">{d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} {d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</span>;
+      }
+    },
+    {
+      header: 'SLA Status', accessor: (t: Ticket) => {
+        const sla = getTicketSLA(t.created_date, t.priority, t.status);
+        let colorClass = 'bg-green-500/10 text-green-500 border-green-500/20';
+        if (sla.level === 'warning') colorClass = 'bg-amber-500/10 text-amber-500 border-amber-500/30 animate-pulse';
+        if (sla.level === 'danger') colorClass = 'bg-red-500/10 text-red-500 border-red-500/30 font-bold';
+        
+        return (
+          <div className="flex flex-col gap-0.5">
+            <span className={`inline-flex items-center w-fit px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wider font-bold border ${colorClass}`}>
+              {sla.label}
+            </span>
+            <span className="text-[10px] text-muted-foreground font-medium">{sla.timeLeftText}</span>
+          </div>
+        );
       }
     },
     {

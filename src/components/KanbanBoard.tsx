@@ -74,7 +74,7 @@ interface KanbanCardProps {
 }
 
 export function KanbanCard({ children, onClick, onEdit, onDelete, id }: KanbanCardProps) {
-  const handleDragStart = (e: any) => {
+  const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
     if (id !== undefined) {
       e.dataTransfer.setData('taskId', id.toString());
       // Optional: change opacity or style during drag
@@ -82,9 +82,17 @@ export function KanbanCard({ children, onClick, onEdit, onDelete, id }: KanbanCa
     }
   };
 
-  const handleDragEnd = (e: any) => {
+  const handleDragEnd = (e: React.DragEvent<HTMLDivElement>) => {
     e.currentTarget.style.opacity = '1';
   };
+
+  const dragProps = {
+    onDragStart: handleDragStart,
+    onDragEnd: handleDragEnd
+  };
+  
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const anyDragProps = dragProps as any;
 
   return (
     <motion.div
@@ -95,8 +103,7 @@ export function KanbanCard({ children, onClick, onEdit, onDelete, id }: KanbanCa
       exit={{ opacity: 0, scale: 0.9, y: -15 }}
       transition={{ type: 'spring', stiffness: 400, damping: 25 }}
       draggable={id !== undefined}
-      onDragStart={handleDragStart}
-      onDragEnd={handleDragEnd}
+      {...anyDragProps}
       onClick={onClick}
       whileHover={onClick || id !== undefined ? { borderColor: 'var(--primary)', boxShadow: '0 4px 20px var(--primary-glow)' } : undefined}
       className={`rounded-xl p-4 border transition-all duration-200 group relative ${onClick ? 'cursor-pointer' : id !== undefined ? 'cursor-grab active:cursor-grabbing hover:-translate-y-0.5 hover:shadow-card-hover' : 'cursor-default'}`}

@@ -55,6 +55,21 @@ export default function TeamPage() {
     }
   };
 
+  useEffect(() => {
+    if (allMembers.length > 0 && typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const badge = params.get('badge');
+      if (badge) {
+        const m = allMembers.find(x => x.badge === badge);
+        if (m && !isModalOpen && !viewingMember) {
+          setTimeout(() => setViewingMember(m), 100);
+          window.history.replaceState(null, '', '/team');
+        }
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allMembers]);
+
   const filtered = allMembers.filter(m => {
     const q = search.toLowerCase();
     return (m.name.toLowerCase().includes(q) || m.badge.includes(q)) &&

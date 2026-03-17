@@ -1,110 +1,188 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, FolderKanban, Users, Monitor, Tickets, CalendarDays, Archive } from 'lucide-react';
-import { useAuth } from '@/context/AuthContext';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Search, Ticket, CheckSquare, User, Loader2 } from 'lucide-react';
+
+interface SearchResult {
+  itemId: string;
+  title: string;
+  subtitle: string;
+  type: 'ticket' | 'task' | 'member';
+}
 
 export function CommandPalette() {
   const [isOpen, setIsOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState<SearchResult[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
-  const { addAuditLog } = useAuth();
 
-  // Handle Cmd+K / Ctrl+K
   useEffect(() => {
-    const down = (e: KeyboardEvent) => {
-      if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
-        setIsOpen((open) => !open);
+        setIsOpen((prev) => !prev);
+      }
+      if (e.key === 'Escape' && isOpen) {
+        setIsOpen(false);
       }
     };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen]);
 
-    document.addEventListener('keydown', down);
-    return () => document.removeEventListener('keydown', down);
-  }, []);
-
-  // Prevent scroll when open
   useEffect(() => {
     if (isOpen) {
-      document.body.style.overflow = 'hidden';
-      setTimeout(() => document.getElementById('cmd-input')?.focus(), 100);
-    } else {
-      document.body.style.overflow = 'unset';
+      setQuery('');
+      setResults([]);
+      setSelectedIndex(0);
+      setTimeout(() => inputRef.current?.focus(), 100);
     }
   }, [isOpen]);
 
-  if (!isOpen) return null;
+  useEffect(() => {
+    if (!query.trim()) {
+      setResults([]);
+      return;
+    }
+    
+    const timeoutId = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+        const data = await res.json();
+        setResults(data);
+        setSelectedIndex(0);
+      } catch (error) {
+        console.error('Search failed:', error);
+      } finally {
+        setLoading(false);
+      }
+    }, 300);
 
-  const handleSelect = (path: string, label: string) => {
-    addAuditLog('Created', 'Search', `Searched and navigated to ${label}`);
+    return () => clearTimeout(timeoutId);
+  }, [query]);
+
+  useEffect(() => {
+    const handleNav = (e: KeyboardEvent) => {
+      if (!isOpen || results.length === 0) return;
+      
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setSelectedIndex((i) => (i < results.length - 1 ? i + 1 : 0));
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setSelectedIndex((i) => (i > 0 ? i - 1 : results.length - 1));
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        handleSelect(results[selectedIndex]);
+      }
+    };
+    
+    window.addEventListener('keydown', handleNav);
+    return () => window.removeEventListener('keydown', handleNav);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, results, selectedIndex]);
+
+  const handleSelect = (item: SearchResult) => {
     setIsOpen(false);
-    setSearchQuery('');
-    router.push(path);
+    if (item.type === 'ticket') {
+      router.push(`/tickets?openId=${item.itemId}`);
+    } else if (item.type === 'task') {
+      router.push(`/tasks?openId=${item.itemId}`);
+    } else if (item.type === 'member') {
+      router.push(`/team?badge=${item.itemId}`);
+    }
   };
 
-  const results = [
-    { id: 'projects', label: 'Projects & Planning', icon: FolderKanban, path: '/projects' },
-    { id: 'tasks', label: 'Tasks & Sprints', icon: Archive, path: '/tasks' },
-    { id: 'assets', label: 'Hardware Inventory', icon: Monitor, path: '/assets' },
-    { id: 'team', label: 'Team Members', icon: Users, path: '/team' },
-    { id: 'tickets', label: 'Support Tickets', icon: Tickets, path: '/tickets' },
-    { id: 'schedule', label: 'Weekly Schedule', icon: CalendarDays, path: '/schedule' },
-    { id: 'daily', label: 'Daily Logs', icon: CalendarDays, path: '/daily' }
-  ].filter(item => item.label.toLowerCase().includes(searchQuery.toLowerCase()));
+  const getIcon = (type: string) => {
+    if (type === 'ticket') return <Ticket className="w-5 h-5 text-blue-500" />;
+    if (type === 'task') return <CheckSquare className="w-5 h-5 text-emerald-500" />;
+    return <User className="w-5 h-5 text-purple-500" />;
+  };
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-start justify-center pt-[15vh]">
-      <div 
-        className="fixed inset-0 bg-black/60 dark:bg-background/80 backdrop-blur-sm transition-opacity" 
-        onClick={() => setIsOpen(false)}
-      />
-      
-      <div className="relative w-full max-w-lg bg-white dark:bg-surface border border-border rounded-xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-        <div className="flex items-center px-4 border-b border-border bg-gray-50 dark:bg-background">
-          <Search className="w-5 h-5 text-muted-foreground mr-3" />
-          <input
-            id="cmd-input"
-            className="flex h-14 w-full bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50"
-            placeholder="Search team, tasks, assets..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-          <button 
+    <AnimatePresence>
+      {isOpen && (
+        <>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
             onClick={() => setIsOpen(false)}
-            className="p-1 rounded bg-gray-100 dark:bg-surface border border-border text-muted-foreground hover:bg-gray-200 dark:hover:bg-white/5 ml-2 text-xs font-mono"
-          >
-            ESC
-          </button>
-        </div>
-        
-        <div className="max-h-[300px] overflow-y-auto p-2 custom-scrollbar">
-          {results.length === 0 ? (
-            <div className="py-6 text-center text-sm text-muted-foreground">
-              No results found.
-            </div>
-          ) : (
-            <div className="space-y-1">
-              <div className="px-2 py-1.5 text-xs font-medium text-muted-foreground">Modules</div>
-              {results.map((result) => {
-                const Icon = result.icon;
-                return (
-                  <button
-                    key={result.id}
-                    onClick={() => handleSelect(result.path, result.label)}
-                    className="w-full flex items-center gap-3 px-3 py-2.5 text-sm rounded-lg hover:bg-primary/10 hover:text-primary transition-colors text-foreground text-left group"
-                  >
-                    <div className="p-1.5 bg-background border border-border group-hover:border-primary/50 group-hover:bg-primary/20 rounded-md transition-colors text-muted-foreground group-hover:text-primary">
-                      <Icon className="w-4 h-4" />
-                    </div>
-                    {result.label}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
+            className="fixed inset-0 z-[100] bg-background/80 backdrop-blur-sm"
+          />
+          <div className="fixed inset-0 z-[110] flex items-start justify-center pt-[15vh] px-4 pointer-events-none">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: -20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: -20 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+              className="w-full max-w-xl bg-surface border border-border rounded-2xl shadow-2xl overflow-hidden pointer-events-auto flex flex-col max-h-[60vh]"
+            >
+              <div className="flex items-center px-4 py-3 border-b border-border">
+                <Search className="w-5 h-5 text-muted-foreground mr-3" />
+                <input
+                  ref={inputRef}
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Search tickets, tasks, or team members..."
+                  className="flex-1 bg-transparent border-none outline-none text-foreground placeholder:text-muted-foreground"
+                />
+                {loading && <Loader2 className="w-4 h-4 text-muted-foreground animate-spin ml-3" />}
+                <div className="hidden sm:flex items-center gap-1 opacity-50 ml-3">
+                  <kbd className="px-1.5 py-0.5 rounded text-[10px] font-mono font-medium border border-border bg-background">ESC</kbd>
+                </div>
+              </div>
+
+              {query && results.length === 0 && !loading && (
+                <div className="p-12 text-center text-sm text-muted-foreground">
+                  No results found for &quot;{query}&quot;
+                </div>
+              )}
+
+              {results.length > 0 && (
+                <div className="overflow-y-auto p-2 custom-scrollbar flex-1">
+                  {results.map((item, i) => (
+                    <button
+                      key={`${item.type}-${item.itemId}`}
+                      onClick={() => handleSelect(item)}
+                      onMouseEnter={() => setSelectedIndex(i)}
+                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-colors ${
+                        i === selectedIndex ? 'bg-primary/10' : 'hover:bg-muted'
+                      }`}
+                    >
+                      <div className="shrink-0 p-2 bg-background border border-border rounded-lg shadow-sm">
+                        {getIcon(item.type)}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-semibold text-foreground truncate flex items-center gap-2">
+                          {item.title}
+                          <span className="text-[10px] uppercase font-bold tracking-wider opacity-50">
+                            {item.type}
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-muted-foreground truncate mt-0.5">
+                          #{item.itemId} • {item.subtitle}
+                        </div>
+                      </div>
+                      {i === selectedIndex && (
+                        <kbd className="hidden sm:inline-flex px-1.5 py-0.5 rounded text-[10px] font-mono font-medium border border-primary/20 bg-primary/10 text-primary">
+                          Enter
+                        </kbd>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          </div>
+        </>
+      )}
+    </AnimatePresence>
   );
 }

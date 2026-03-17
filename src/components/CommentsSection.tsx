@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Send, User as UserIcon } from 'lucide-react';
+import { Send } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 
 export interface Comment {
