@@ -50,11 +50,12 @@ services:
       - NODE_ENV=development
       - CHOKIDAR_USEPOLLING=true
       - DB_PATH=/data
+      - MYSQL_HOST=giken-mysql
     ports:
       - "3002:3002"
     restart: unless-stopped
     networks:
-      - giken-network
+      - docker_giken-network
 
   # ============================================
   # APP 4 - Automation Refill (Port 3003)
@@ -110,6 +111,8 @@ services:
 networks:
   giken-network:
     driver: bridge
+  docker_giken-network:
+    external: true
 
 volumes:
   mysql-data:

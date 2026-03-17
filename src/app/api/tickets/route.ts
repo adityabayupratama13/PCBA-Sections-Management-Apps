@@ -1,49 +1,46 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
-import { getDb } from '@/lib/db';
-import type { Database } from 'better-sqlite3';
+import { getDb, toMysqlDatetime, toMysqlDate } from '@/lib/db';
 
-function ticketToTaskStatus(ticketStatus: string): string {
-  return ticketStatus;
-}
 
-// Rules Engine Processor
-async function processRules(db: Database, triggerEvent: string, itemData: Record<string, unknown>) {
+// Rules Engine
+async function processRules(triggerEvent: string, itemData: Record<string, unknown>) {
   try {
-    const rules = db.prepare('SELECT * FROM rules WHERE is_active = 1 AND trigger_event = ?').all(triggerEvent) as Record<string, unknown>[];
-    
-    for (const rule of rules) {
-      // Evaluate Condition
-      const conditionField = String(rule.condition_field);
-      const fieldVal = String(itemData[conditionField] || '').toLowerCase();
+    const db = getDb();
+    const [rules] = await (db.query as any)(
+      'SELECT * FROM rules WHERE is_active = 1 AND trigger_event = ?',
+      [triggerEvent]
+    );
+    for (const rule of rules as Record<string, unknown>[]) {
+      const fieldVal = String(itemData[String(rule.condition_field)] || '').toLowerCase();
       const targetVal = String(rule.condition_value).toLowerCase();
-      
-      if (fieldVal === targetVal) {
-        // Condition matches! Execute Action
-        if (rule.action_type === 'assign_to') {
-          // Find linked task and reassign
-          db.prepare("UPDATE tasks SET assignee = ? WHERE ticket_id = ?").run(rule.action_payload, itemData.id);
-          db.prepare("INSERT INTO audit_logs (action, module, details, user_name) VALUES (?, ?, ?, ?)").run('Automation', 'Rules', `[${rule.name}] Auto-assigned task to ${rule.action_payload}`, 'System');
-        } 
-        else if (rule.action_type === 'set_priority') {
-          db.prepare("UPDATE tickets SET priority = ? WHERE id = ?").run(rule.action_payload, itemData.id);
-          const taskPriority = rule.action_payload === 'Critical' ? 'High' : rule.action_payload;
-          db.prepare("UPDATE tasks SET priority = ? WHERE ticket_id = ?").run(taskPriority, itemData.id);
-          db.prepare("INSERT INTO audit_logs (action, module, details, user_name) VALUES (?, ?, ?, ?)").run('Automation', 'Rules', `[${rule.name}] Auto-set priority to ${rule.action_payload}`, 'System');
-        }
-        else if (rule.action_type === 'add_comment') {
-          // Fetch existing comments, append new one
-          const current = db.prepare('SELECT comments FROM tickets WHERE id=?').get(itemData.id) as { comments: string } | undefined;
-          const comments = JSON.parse(current?.comments || '[]');
-          comments.push({ id: Date.now().toString(), author: 'System Bot', text: rule.action_payload, timestamp: new Date().toISOString() });
-          
-          db.prepare("UPDATE tickets SET comments = ? WHERE id = ?").run(JSON.stringify(comments), itemData.id);
-          db.prepare("UPDATE tasks SET comments = ? WHERE ticket_id = ?").run(JSON.stringify(comments), itemData.id);
-          db.prepare("INSERT INTO audit_logs (action, module, details, user_name) VALUES (?, ?, ?, ?)").run('Automation', 'Rules', `[${rule.name}] Auto-commented on ticket`, 'System');
-        }
-        else if (rule.action_type === 'generate_alert') {
-          db.prepare("INSERT INTO audit_logs (action, module, details, user_name) VALUES (?, ?, ?, ?)").run('CRITICAL ALERT', 'Rules', `🚨 [${rule.name}] ${rule.action_payload} (Ticket: ${itemData.id})`, 'System');
-        }
+      if (fieldVal !== targetVal) continue;
+
+      const ex = (sql: string, params: unknown[]) => (db.execute as any)(sql, params);
+
+      if (rule.action_type === 'assign_to') {
+        await ex('UPDATE tasks SET assignee = ? WHERE ticket_id = ?', [rule.action_payload, itemData.id]);
+        await ex('INSERT INTO audit_logs (action, module, details, user_name) VALUES (?, ?, ?, ?)',
+          ['Automation', 'Rules', `[${rule.name}] Auto-assigned task to ${rule.action_payload}`, 'System']);
+      } else if (rule.action_type === 'set_priority') {
+        await ex('UPDATE tickets SET priority = ? WHERE id = ?', [rule.action_payload, itemData.id]);
+        const taskPriority = rule.action_payload === 'Critical' ? 'High' : rule.action_payload;
+        await ex('UPDATE tasks SET priority = ? WHERE ticket_id = ?', [taskPriority, itemData.id]);
+        await ex('INSERT INTO audit_logs (action, module, details, user_name) VALUES (?, ?, ?, ?)',
+          ['Automation', 'Rules', `[${rule.name}] Auto-set priority to ${rule.action_payload}`, 'System']);
+      } else if (rule.action_type === 'add_comment') {
+        const [crows] = await ex('SELECT comments FROM tickets WHERE id=?', [itemData.id]);
+        const current = (crows as any)[0] as { comments: string } | undefined;
+        const comments = JSON.parse(current?.comments || '[]');
+        comments.push({ id: Date.now().toString(), author: 'System Bot', text: rule.action_payload, timestamp: new Date().toISOString() });
+        await ex('UPDATE tickets SET comments = ? WHERE id = ?', [JSON.stringify(comments), itemData.id]);
+        await ex('UPDATE tasks SET comments = ? WHERE ticket_id = ?', [JSON.stringify(comments), itemData.id]);
+        await ex('INSERT INTO audit_logs (action, module, details, user_name) VALUES (?, ?, ?, ?)',
+          ['Automation', 'Rules', `[${rule.name}] Auto-commented on ticket`, 'System']);
+      } else if (rule.action_type === 'generate_alert') {
+        await ex('INSERT INTO audit_logs (action, module, details, user_name) VALUES (?, ?, ?, ?)',
+          ['CRITICAL ALERT', 'Rules', `🚨 [${rule.name}] ${rule.action_payload} (Ticket: ${itemData.id})`, 'System']);
       }
     }
   } catch (err) {
@@ -51,45 +48,42 @@ async function processRules(db: Database, triggerEvent: string, itemData: Record
   }
 }
 
-
 export async function GET() {
   const db = getDb();
-  const tickets = db.prepare('SELECT * FROM tickets ORDER BY COALESCE(updated_at, created_date, id) DESC').all();
-  return NextResponse.json(tickets);
+  const [rows] = await db.query('SELECT * FROM tickets ORDER BY COALESCE(updated_at, created_date, id) DESC') as any;
+  return NextResponse.json(rows);
 }
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
   const db = getDb();
   try {
-    const count = db.prepare('SELECT COUNT(*) as c FROM tickets').get() as { c: number };
-    const id = body.id || `TKT-${String(count.c + 100).padStart(3, '0')}`;
-    db.prepare('INSERT INTO tickets (id, title, reporter, priority, status, created_date, resolution, attachments, comments, linked_article) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').run(
-      id, body.title, body.reporter, body.priority || 'Medium', body.status || 'Backlog', body.createdDate || new Date().toISOString(),
-      body.resolution || '', body.attachments || '[]', body.comments || '[]', body.linked_article || ''
+    const [countRows] = await db.query('SELECT COUNT(*) AS c FROM tickets') as any;
+    const count = (countRows[0] as { c: number }).c;
+    const id = body.id || `TKT-${String(count + 100).padStart(3, '0')}`;
+
+    await db.execute(
+      'INSERT INTO tickets (id, title, reporter, priority, status, created_date, resolution, attachments, comments, linked_article) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [id, body.title, body.reporter, body.priority || 'Medium', body.status || 'Backlog',
+       toMysqlDatetime(body.createdDate), body.resolution || '',
+       body.attachments || '[]', body.comments || '[]', body.linked_article || '']
     );
 
-    // Auto-create a linked Task for this ticket
-    const taskTitle = `[${id}] ${body.title}`;
-    const taskStatus = body.status || 'Backlog';
     const taskPriority = body.priority === 'Critical' ? 'High' : (body.priority || 'Medium');
-    const assignee = 'Unassigned';
-    const initials = 'UN';
-    db.prepare('INSERT INTO tasks (title, status, priority, assignee, initials, due_date, ticket_id, resolution, attachments, comments) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').run(
-      taskTitle, taskStatus, taskPriority, assignee, initials, '', id, body.resolution || '', body.attachments || '[]', body.comments || '[]'
+    await db.execute(
+      'INSERT INTO tasks (title, status, priority, assignee, initials, due_date, ticket_id, resolution, attachments, comments) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [`[${id}] ${body.title}`, body.status || 'Backlog', taskPriority, 'Unassigned', 'UN', '', id, body.resolution || '', body.attachments || '[]', body.comments || '[]']
     );
-
-    // Auto-create daily log entry linked to this ticket
-    db.prepare('INSERT INTO daily_logs (date, member, activity, hours, location, source) VALUES (?, ?, ?, ?, ?, ?)').run(
-      new Date().toISOString().split('T')[0], body.userName || 'System',
-      `[Ticket ${id}] Created — ${body.title}`, 0, 'System', `ticket:${id}`
+    await db.execute(
+      'INSERT INTO daily_logs (date, member, activity, hours, location, source) VALUES (?, ?, ?, ?, ?, ?)',
+      [toMysqlDate(), body.userName || 'System',
+       `[Ticket ${id}] Created — ${body.title}`, 0, 'System', `ticket:${id}`]
     );
-    db.prepare('INSERT INTO audit_logs (action, module, details, user_name) VALUES (?, ?, ?, ?)')
-      .run('Created', 'Tickets', `Created ticket: ${id} — ${body.title} (auto-created task + daily log)`, body.userName || 'System');
-      
-    // Trigger Automation Engine
-    await processRules(db, 'ticket_created', { id, ...body });
-
+    await db.execute(
+      'INSERT INTO audit_logs (action, module, details, user_name) VALUES (?, ?, ?, ?)',
+      ['Created', 'Tickets', `Created ticket: ${id} — ${body.title}`, body.userName || 'System']
+    );
+    await processRules('ticket_created', { id, ...body });
     return NextResponse.json({ id });
   } catch (error) {
     console.error(error);
@@ -101,28 +95,24 @@ export async function PUT(req: NextRequest) {
   const body = await req.json();
   const db = getDb();
 
-  db.prepare("UPDATE tickets SET title=?, reporter=?, priority=?, status=?, resolution=?, attachments=?, comments=?, linked_article=?, updated_at=datetime('now', 'localtime') WHERE id=?")
-    .run(body.title, body.reporter, body.priority, body.status, body.resolution || '', body.attachments || '[]', body.comments || '[]', body.linked_article || '', body.id);
+  await db.execute(
+    'UPDATE tickets SET title=?, reporter=?, priority=?, status=?, resolution=?, attachments=?, comments=?, linked_article=?, updated_at=NOW() WHERE id=?',
+    [body.title, body.reporter, body.priority, body.status, body.resolution || '',
+     body.attachments || '[]', body.comments || '[]', body.linked_article || '', body.id]
+  );
 
-  // Sync: update any linked task's status automatically
-  const linkedTask = db.prepare("SELECT id FROM tasks WHERE ticket_id = ?").get(body.id) as { id: number } | undefined;
+  const [taskRows] = await db.execute('SELECT id FROM tasks WHERE ticket_id = ?', [body.id]) as any;
+  const linkedTask = taskRows[0] as { id: number } | undefined;
   if (linkedTask) {
-    const newTaskStatus = ticketToTaskStatus(body.status);
-    db.prepare('UPDATE tasks SET status=? WHERE id=?').run(newTaskStatus, linkedTask.id);
-    db.prepare('INSERT INTO audit_logs (action, module, details, user_name) VALUES (?, ?, ?, ?)')
-      .run('Updated', 'Tasks', `Auto-synced task status to "${newTaskStatus}" from ticket ${body.id}`, 'System');
+    await db.execute('UPDATE tasks SET status=? WHERE id=?', [body.status, linkedTask.id]);
+    await db.execute('INSERT INTO audit_logs (action, module, details, user_name) VALUES (?, ?, ?, ?)',
+      ['Updated', 'Tasks', `Auto-synced task status to "${body.status}" from ticket ${body.id}`, 'System']);
   }
-
-  // Update related daily log entries
-  db.prepare("UPDATE daily_logs SET activity = ? WHERE source = ?")
-    .run(`[Ticket ${body.id}] ${body.status} — ${body.title}`, `ticket:${body.id}`);
-
-  db.prepare('INSERT INTO audit_logs (action, module, details, user_name) VALUES (?, ?, ?, ?)')
-    .run('Updated', 'Tickets', `Updated ticket: ${body.id} — ${body.title} (${body.status})`, body.userName || 'System');
-
-  // Trigger Automation Engine
-  await processRules(db, 'ticket_updated', body);
-
+  await db.execute('UPDATE daily_logs SET activity = ? WHERE source = ?',
+    [`[Ticket ${body.id}] ${body.status} — ${body.title}`, `ticket:${body.id}`]);
+  await db.execute('INSERT INTO audit_logs (action, module, details, user_name) VALUES (?, ?, ?, ?)',
+    ['Updated', 'Tickets', `Updated ticket: ${body.id} — ${body.title} (${body.status})`, body.userName || 'System']);
+  await processRules('ticket_updated', body);
   return NextResponse.json({ success: true });
 }
 
@@ -130,13 +120,12 @@ export async function DELETE(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const id = searchParams.get('id');
   const db = getDb();
-  const ticket = db.prepare('SELECT title FROM tickets WHERE id=?').get(id) as { title: string } | undefined;
-  db.prepare('DELETE FROM tickets WHERE id=?').run(id);
-  // Delete related daily logs
-  db.prepare("DELETE FROM daily_logs WHERE source = ?").run(`ticket:${id}`);
-  // Unlink tasks that were linked to this ticket (don't delete tasks, just unlink)
-  db.prepare("UPDATE tasks SET ticket_id='' WHERE ticket_id=?").run(id);
-  db.prepare('INSERT INTO audit_logs (action, module, details, user_name) VALUES (?, ?, ?, ?)')
-    .run('Deleted', 'Tickets', `Deleted ticket: ${id} — ${ticket?.title || ''}`, 'System');
+  const [rows] = await db.execute('SELECT title FROM tickets WHERE id=?', [id]) as any;
+  const ticket = rows[0] as { title: string } | undefined;
+  await db.execute('DELETE FROM tickets WHERE id=?', [id]);
+  await db.execute('DELETE FROM daily_logs WHERE source = ?', [`ticket:${id}`]);
+  await db.execute("UPDATE tasks SET ticket_id='' WHERE ticket_id=?", [id]);
+  await db.execute('INSERT INTO audit_logs (action, module, details, user_name) VALUES (?, ?, ?, ?)',
+    ['Deleted', 'Tickets', `Deleted ticket: ${id} — ${ticket?.title || ''}`, 'System']);
   return NextResponse.json({ success: true });
 }

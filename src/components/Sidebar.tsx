@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, Users, FolderKanban, Monitor, Tickets,
-  CalendarDays, CalendarClock, History, CheckSquare, X, Briefcase, ExternalLink, BookOpen, Zap
+  CalendarDays, CalendarClock, History, CheckSquare, X, Briefcase, ExternalLink, BookOpen
 } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
