@@ -273,43 +273,33 @@ export default function TeamPage() {
               {managementMembers.length} manager{managementMembers.length !== 1 ? 's' : ''}
             </span>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+          <div className="divide-y" style={{ borderColor: 'rgba(245,158,11,0.1)' }}>
             {managementMembers.map(m => (
-              <motion.div
-                key={m.id}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="relative rounded-xl border p-4 flex flex-col items-center gap-3 group hover:border-amber-500/50 transition-all"
-                style={{ background: 'linear-gradient(135deg, rgba(245,158,11,0.05), transparent)', borderColor: 'rgba(245,158,11,0.2)' }}
-              >
-                {/* Actions */}
-                <div className="absolute top-3 right-3 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button onClick={() => openEditMgmtModal(m)} className="p-1.5 rounded-lg hover:bg-amber-500/15 text-muted-foreground hover:text-amber-400 transition-colors"><Edit2 className="w-3.5 h-3.5" /></button>
-                  <button onClick={() => setDeleteMgmtTarget(m)} className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
-                </div>
+              <div key={m.id} className="flex items-center gap-4 py-3 px-1 group hover:bg-amber-500/5 rounded-xl transition-colors">
                 {/* Avatar */}
-                <div className="relative">
-                  <PhotoAvatar name={m.name} photoUrl={m.photo_url} size="lg" canUpload={false} />
-                  <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-amber-500 flex items-center justify-center border-2 border-surface">
-                    <Crown className="w-2.5 h-2.5 text-white" />
+                <div className="relative flex-shrink-0">
+                  <PhotoAvatar name={m.name} photoUrl={m.photo_url} size="sm" canUpload={false} />
+                  <div className="absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full bg-amber-500 flex items-center justify-center border border-surface">
+                    <Crown className="w-2 h-2 text-white" />
                   </div>
                 </div>
-                {/* Info */}
-                <div className="text-center">
-                  <p className="font-bold text-sm text-foreground">{m.name}</p>
-                  <p className="text-xs text-amber-400 font-semibold mt-0.5">{m.role}</p>
-                  <div className="flex items-center justify-center gap-1 mt-1">
-                    <Building2 className="w-3 h-3 text-muted-foreground" />
-                    <span className="text-[10px] text-muted-foreground">{m.division}</span>
-                  </div>
+                {/* Name */}
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm text-foreground truncate">{m.name}</p>
+                  <p className="text-xs text-muted-foreground">{m.email || '—'}</p>
                 </div>
-                {/* Contact */}
-                <div className="w-full space-y-1 border-t pt-3" style={{ borderColor: 'rgba(245,158,11,0.15)' }}>
-                  {m.email && <p className="text-[10px] text-muted-foreground truncate text-center">{m.email}</p>}
-                  {m.phone && <p className="text-[10px] text-muted-foreground text-center">{m.phone}</p>}
-                  <p className="text-[9px] text-amber-400/60 text-center font-mono">#{m.badge}</p>
+                {/* Badge */}
+                <code className="font-mono text-xs px-2 py-0.5 rounded hidden sm:block" style={{ background: 'var(--muted)', color: 'var(--muted-foreground)' }}>{m.badge}</code>
+                {/* Title */}
+                <span className="text-xs font-semibold text-amber-400 border border-amber-500/25 bg-amber-500/10 px-2.5 py-0.5 rounded-full whitespace-nowrap hidden sm:block">{m.role}</span>
+                {/* Phone */}
+                <span className="text-xs text-muted-foreground hidden lg:block w-32 truncate">{m.phone || '—'}</span>
+                {/* Actions */}
+                <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button onClick={() => openEditMgmtModal(m)} className="text-muted-foreground hover:text-amber-400 transition-colors" title="Edit"><Edit2 className="w-4 h-4" /></button>
+                  <button onClick={() => setDeleteMgmtTarget(m)} className="text-muted-foreground hover:text-destructive transition-colors" title="Delete"><Trash2 className="w-4 h-4" /></button>
                 </div>
-              </motion.div>
+              </div>
             ))}
           </div>
         </div>
