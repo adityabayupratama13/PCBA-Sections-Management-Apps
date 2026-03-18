@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { Plus, Search, Edit2, Trash2, Eye, EyeOff, Shield, ExternalLink, Crown, Building2 } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, Eye, EyeOff, Shield, ExternalLink, Crown, Building2, UserCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DataTable } from '@/components/DataTable';
 import { Modal, ConfirmDialog } from '@/components/Modal';
@@ -8,6 +8,7 @@ import PhotoAvatar from '@/components/PhotoAvatar';
 import { toast } from 'sonner';
 import { useAuth, type Member } from '@/context/AuthContext';
 import Link from 'next/link';
+import { canManageTeam, canEditOwnProfile } from '@/lib/permissions';
 
 interface Position { id: number; name: string; description: string; }
 
@@ -27,7 +28,8 @@ function roleBadgeStyle(role: string): string {
 }
 
 export default function TeamPage() {
-  const { members, addMember, updateMember, deleteMember } = useAuth();
+  const { members, addMember, updateMember, deleteMember, currentUser } = useAuth();
+  const canEdit = canManageTeam(currentUser);
 
   const [positions, setPositions] = useState<Position[]>([]);
   useEffect(() => {
@@ -227,8 +229,16 @@ export default function TeamPage() {
       header: 'Actions',
       accessor: (m: Member) => (
         <div className="flex items-center gap-3" onClick={e => e.stopPropagation()}>
-          <button onClick={() => openEditModal(m)} className="text-muted-foreground hover:text-primary transition-colors" title="Edit"><Edit2 className="w-4 h-4" /></button>
-          <button onClick={() => setDeleteTarget(m)} className="text-muted-foreground hover:text-destructive transition-colors" title="Delete"><Trash2 className="w-4 h-4" /></button>
+          {(canEdit || canEditOwnProfile(currentUser, m.id)) && (
+            <button onClick={() => openEditModal(m)} className="text-muted-foreground hover:text-primary transition-colors" title={canEditOwnProfile(currentUser, m.id) && !canEdit ? 'Edit My Profile' : 'Edit'}>
+              {canEditOwnProfile(currentUser, m.id) && !canEdit ? <UserCircle className="w-4 h-4" /> : <Edit2 className="w-4 h-4" />}
+            </button>
+          )}
+          {canEdit && (
+            <button onClick={() => setDeleteTarget(m)} className="text-muted-foreground hover:text-destructive transition-colors" title="Delete">
+              <Trash2 className="w-4 h-4" />
+            </button>
+          )}
         </div>
       )
     },
@@ -245,14 +255,18 @@ export default function TeamPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={openAddMgmtModal}
-            className="flex items-center gap-2 border border-amber-500/40 hover:border-amber-500/80 text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 px-4 py-2.5 rounded-xl font-medium text-sm transition-all">
-            <Crown className="w-4 h-4" /> Add Management
-          </button>
-          <button onClick={openAddModal}
-            className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-white px-4 py-2.5 rounded-xl font-medium text-sm transition-all shadow-sm">
-            <Plus className="w-4 h-4" /> Add Member
-          </button>
+          {canEdit && (
+            <button onClick={openAddMgmtModal}
+              className="flex items-center gap-2 border border-amber-500/40 hover:border-amber-500/80 text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 px-4 py-2.5 rounded-xl font-medium text-sm transition-all">
+              <Crown className="w-4 h-4" /> Add Management
+            </button>
+          )}
+          {canEdit && (
+            <button onClick={openAddModal}
+              className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-white px-4 py-2.5 rounded-xl font-medium text-sm transition-all shadow-sm">
+              <Plus className="w-4 h-4" /> Add Member
+            </button>
+          )}
         </div>
       </div>
 
@@ -296,8 +310,16 @@ export default function TeamPage() {
                 <span className="text-xs text-muted-foreground hidden lg:block w-32 truncate">{m.phone || '—'}</span>
                 {/* Actions */}
                 <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button onClick={() => openEditMgmtModal(m)} className="text-muted-foreground hover:text-amber-400 transition-colors" title="Edit"><Edit2 className="w-4 h-4" /></button>
-                  <button onClick={() => setDeleteMgmtTarget(m)} className="text-muted-foreground hover:text-destructive transition-colors" title="Delete"><Trash2 className="w-4 h-4" /></button>
+                  {(canEdit || canEditOwnProfile(currentUser, m.id)) && (
+                    <button onClick={() => openEditMgmtModal(m)} className="text-muted-foreground hover:text-amber-400 transition-colors" title={canEditOwnProfile(currentUser, m.id) && !canEdit ? 'Edit My Profile' : 'Edit'}>
+                      {canEditOwnProfile(currentUser, m.id) && !canEdit ? <UserCircle className="w-4 h-4" /> : <Edit2 className="w-4 h-4" />}
+                    </button>
+                  )}
+                  {canEdit && (
+                    <button onClick={() => setDeleteMgmtTarget(m)} className="text-muted-foreground hover:text-destructive transition-colors" title="Delete">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
               </div>
             ))}

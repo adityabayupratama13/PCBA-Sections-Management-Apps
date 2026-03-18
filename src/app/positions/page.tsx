@@ -6,6 +6,7 @@ import { Modal, ConfirmDialog } from '@/components/Modal';
 import { toast } from 'sonner';
 import { useApi } from '@/hooks/useApi';
 import { useAuth } from '@/context/AuthContext';
+import { canManageTeam } from '@/lib/permissions';
 
 interface Position {
   id: number;
@@ -29,6 +30,7 @@ const DIVISIONS = ['Management', 'Software Dev', 'Infrastructure', 'Helpdesk', '
 export default function PositionsPage() {
   const { data: positions, loading, create, update, remove } = useApi<Position>('positions');
   const { currentUser } = useAuth();
+  const canEdit = canManageTeam(currentUser);
   const [search, setSearch] = useState('');
   const [filterLevel, setFilterLevel] = useState('All');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -124,11 +126,13 @@ export default function PositionsPage() {
     },
     {
       header: 'Actions',
-      accessor: (p: Position) => (
+      accessor: (p: Position) => canEdit ? (
         <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
           <button onClick={() => openEditModal(p)} className="text-muted-foreground hover:text-primary transition-colors"><Edit2 className="w-4 h-4" /></button>
           <button onClick={() => setDeleteTarget(p)} className="text-muted-foreground hover:text-destructive transition-colors"><Trash2 className="w-4 h-4" /></button>
         </div>
+      ) : (
+        <span className="text-xs text-muted-foreground italic">View only</span>
       )
     }
   ];
@@ -140,10 +144,12 @@ export default function PositionsPage() {
           <h1 className="text-3xl font-bold text-foreground">Job Positions</h1>
           <p className="text-muted-foreground mt-1">Master data jabatan — {positions.length} positions</p>
         </div>
-        <button onClick={openAddModal}
-          className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-white px-4 py-2.5 rounded-xl font-medium text-sm transition-all shadow-sm">
-          <Plus className="w-4 h-4" /> Add Position
-        </button>
+        {canEdit && (
+          <button onClick={openAddModal}
+            className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-white px-4 py-2.5 rounded-xl font-medium text-sm transition-all shadow-sm">
+            <Plus className="w-4 h-4" /> Add Position
+          </button>
+        )}
       </div>
 
       {/* Filter bar */}

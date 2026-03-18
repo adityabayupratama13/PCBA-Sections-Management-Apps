@@ -7,6 +7,7 @@ import {
   PieChart, Pie, Cell, Legend
 } from 'recharts';
 import { useAuth } from '@/context/AuthContext';
+import { canManageDashboard } from '@/lib/permissions';
 
 interface Stats { members: number; tickets: { total: number; open: number; inProgress: number; resolved: number }; tasks: { total: number; backlog: number; inProgress: number; review: number; done: number }; logs: number; positions: number; }
 interface AuditLog { id: number; action: string; module: string; details: string; user_name: string; timestamp: string; }
@@ -14,7 +15,7 @@ interface TaskItem { assignee: string; status: string; }
 interface MemberItem { name: string; role: string; status: string; }
 
 export default function DashboardPage() {
-  const { auditLogs } = useAuth();
+  const { auditLogs, currentUser } = useAuth();
   const [stats, setStats] = useState<Stats>({ members: 0, tickets: { total: 0, open: 0, inProgress: 0, resolved: 0 }, tasks: { total: 0, backlog: 0, inProgress: 0, review: 0, done: 0 }, logs: 0, positions: 0 });
   const [recentLogs, setRecentLogs] = useState<AuditLog[]>([]);
   const [workloads, setWorkloads] = useState<{ name: string; tasks: number }[]>([]);
@@ -219,13 +220,15 @@ export default function DashboardPage() {
             {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
           </p>
         </div>
-        <button
-          onClick={toggleEditLayout}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${isEditingLayout ? 'bg-primary text-white shadow-md' : 'bg-surface border border-border text-foreground hover:bg-primary/5 hover:border-primary/30'}`}
-        >
-          <Settings2 className="w-4 h-4" />
-          {isEditingLayout ? 'Done' : 'Edit Layout'}
-        </button>
+        {canManageDashboard(currentUser) && (
+          <button
+            onClick={toggleEditLayout}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${isEditingLayout ? 'bg-primary text-white shadow-md' : 'bg-surface border border-border text-foreground hover:bg-primary/5 hover:border-primary/30'}`}
+          >
+            <Settings2 className="w-4 h-4" />
+            {isEditingLayout ? 'Done' : 'Edit Layout'}
+          </button>
+        )}
       </div>
 
       {layout.map((blockId) => {

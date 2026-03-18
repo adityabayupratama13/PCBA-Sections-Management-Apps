@@ -7,6 +7,7 @@ import { useAuth } from '@/context/AuthContext';
 import { format, addDays, startOfWeek, subMonths, setDate, isWithinInterval, addMonths } from 'date-fns';
 import { toast } from 'sonner';
 import { Modal } from '@/components/Modal';
+import { canManageAttendanceAdmin } from '@/lib/permissions';
 import * as xlsx from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -40,7 +41,7 @@ const ID_HOLIDAYS: Record<string, string> = {
 
 export default function AttendancePage() {
   const { currentUser, members } = useAuth();
-  const isManager = true; // User requested all manpower to have full access
+  const isManager = canManageAttendanceAdmin(currentUser);
   
   // API Data
   const { data: logs, refetch: fetchLogs, create: createLog } = useApi<AttendanceLog>('attendance');
@@ -252,7 +253,7 @@ export default function AttendancePage() {
                         <select 
                           value={currentVal}
                           onChange={(e) => handleShiftChange(member.name, dateStr, e.target.value)}
-                          disabled={savingShift || (!isManager && currentUser?.name !== member.name)}
+                          disabled={savingShift || !isManager}
                           className={`w-full text-xs py-1.5 px-1 rounded border-transparent focus:border-primary focus:ring-1 focus:ring-primary outline-none transition-all cursor-pointer text-center appearance-none
                             ${currentVal === 'Off' ? 'bg-muted/50 text-muted-foreground' : 
                               currentVal === 'Leave' ? 'bg-destructive/10 text-destructive font-medium border-destructive/20' : 
