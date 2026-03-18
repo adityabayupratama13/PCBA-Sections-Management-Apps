@@ -32,14 +32,23 @@ export async function PUT(req: NextRequest) {
   const existing = existRows[0] as LeaveRow | undefined;
   if (!existing) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-  // Full edit of leave details
+  // Full edit of leave details (Revision or Edit)
   if (body.start_date || body.end_date || body.leave_type || body.reason) {
     const isEditingApproved = existing.status === 'Approved';
+    const isRevision = body.isRevision === true;
+    
     await db.execute(
-      'UPDATE leave_requests SET leave_type = ?, start_date = ?, end_date = ?, days_count = ?, reason = ?, status = ?, approved_by = ? WHERE id = ?',
+      `UPDATE leave_requests SET 
+        leave_type = ?, start_date = ?, end_date = ?, days_count = ?, reason = ?, status = 'Pending', 
+        leader_approved_by = '', leader_approved_at = NULL,
+        it_supervisor_approved_by = '', it_supervisor_approved_at = NULL,
+        manager_approved_by = '', manager_approved_at = NULL,
+        decline_reason = NULL, approved_by = ''
+        ${isRevision ? ', revision_count = revision_count + 1' : ''}
+       WHERE id = ?`,
       [body.leave_type || existing.leave_type, body.start_date || existing.start_date,
        body.end_date || existing.end_date, body.days_count || existing.days_count,
-       body.reason || '', 'Pending', '', body.id]
+       body.reason || '', body.id]
     );
 
     if (isEditingApproved) {
@@ -61,7 +70,22 @@ export async function PUT(req: NextRequest) {
   }
 
   // Status approval/rejection only
-  await db.execute('UPDATE leave_requests SET status = ?, approved_by = ? WHERE id = ?', [body.status, body.approved_by || '', body.id]);
+  const updateFields: string[] = [];
+  const updateValues: any[] = [];
+  
+  if (body.status) { updateFields.push('status = ?'); updateValues.push(body.status); }
+  if (body.leader_approved_by !== undefined) { updateFields.push('leader_approved_by = ?', 'leader_approved_at = NOW()'); updateValues.push(body.leader_approved_by); }
+  if (body.it_supervisor_approved_by !== undefined) { updateFields.push('it_supervisor_approved_by = ?', 'it_supervisor_approved_at = NOW()'); updateValues.push(body.it_supervisor_approved_by); }
+  if (body.manager_approved_by !== undefined) { updateFields.push('manager_approved_by = ?', 'manager_approved_at = NOW()'); updateValues.push(body.manager_approved_by); }
+  if (body.declined_by !== undefined) { updateFields.push('approved_by = ?'); updateValues.push(body.declined_by); }
+  if (body.decline_reason !== undefined) { updateFields.push('decline_reason = ?'); updateValues.push(body.decline_reason); }
+  if (body.approved_by !== undefined && body.status === 'Approved') { updateFields.push('approved_by = ?'); updateValues.push(body.approved_by); }
+
+  if (updateFields.length > 0) {
+    updateValues.push(body.id);
+    await db.execute(`UPDATE leave_requests SET ${updateFields.join(', ')} WHERE id = ?`, updateValues);
+  }
+
   if (body.status === 'Approved' && existing.status !== 'Approved') {
     const currTarget = new Date(existing.start_date);
     const endDateObj = new Date(existing.end_date);
@@ -82,7 +106,7 @@ export async function PUT(req: NextRequest) {
     }
   }
   await db.execute('INSERT INTO audit_logs (action, module, details, user_name) VALUES (?, ?, ?, ?)',
-    ['Updated', 'Leave Request', `${body.approved_by} marked leave ${body.id} as ${body.status}`, body.userName || 'System']);
+    ['Updated', 'Leave Request', `${body.userName || 'System'} marked leave ${body.id} as ${body.status}`, body.userName || 'System']);
   return NextResponse.json({ success: true });
 }
 

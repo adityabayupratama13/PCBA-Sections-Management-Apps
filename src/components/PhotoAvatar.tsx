@@ -140,7 +140,6 @@ export default function PhotoAvatar({
           className={`absolute inset-0 rounded-full ${s.ring} ring-offset-2`}
           style={{
             background: 'conic-gradient(from 0deg, #7c3aed, #06b6d4, #10b981, #f59e0b, #7c3aed)',
-            ringOffsetColor: 'var(--background)',
           }}
           animate={hovered || dragging ? {
             rotate: [0, 360],

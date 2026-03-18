@@ -148,7 +148,7 @@ export default function ProjectsPage() {
   const completedProjects = projects.filter(p => p.status === 'Completed').length;
   const avgProgress = projects.length > 0 ? Math.round(projects.reduce((sum, p) => sum + getAutoProgress(p), 0) / projects.length) : 0;
 
-  const picOptions = useMemo(() => members.map(m => m.name), [members]);
+  const picOptions = useMemo(() => members.filter(m => m.member_type !== 'Management').map(m => m.name), [members]);
 
   const statusColor = (s: string) => {
     switch (s) {

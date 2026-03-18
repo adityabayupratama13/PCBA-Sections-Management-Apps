@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { Plus, Search, Edit2, Trash2, Eye, EyeOff, Shield, ExternalLink, Crown, Building2, UserCircle } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { Plus, Search, Edit2, Trash2, Eye, EyeOff, Shield, ExternalLink, Crown } from 'lucide-react';
+import { AnimatePresence } from 'framer-motion';
 import { DataTable } from '@/components/DataTable';
 import { Modal, ConfirmDialog } from '@/components/Modal';
 import PhotoAvatar from '@/components/PhotoAvatar';

@@ -1,7 +1,6 @@
 'use client';
 import { useEffect, useState, useRef } from 'react';
 import { Users, Ticket, CheckSquare, Activity, Clock, BarChart3, AlertCircle, Briefcase, ArrowRight, Settings2, GripHorizontal } from 'lucide-react';
-import anime from 'animejs';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
   PieChart, Pie, Cell, Legend
@@ -17,6 +16,8 @@ interface MemberItem { name: string; role: string; status: string; }
 export default function DashboardPage() {
   const { auditLogs, currentUser } = useAuth();
   const [stats, setStats] = useState<Stats>({ members: 0, tickets: { total: 0, open: 0, inProgress: 0, resolved: 0 }, tasks: { total: 0, backlog: 0, inProgress: 0, review: 0, done: 0 }, logs: 0, positions: 0 });
+  const [timeFilter, setTimeFilter] = useState<string>('Today');
+  const [rawData, setRawData] = useState<{ tickets: any[], tasks: any[], logs: any[], members: any[], positions: any[] }>({ tickets: [], tasks: [], logs: [], members: [], positions: [] });
   const [recentLogs, setRecentLogs] = useState<AuditLog[]>([]);
   const [workloads, setWorkloads] = useState<{ name: string; tasks: number }[]>([]);
   const [teamMembers, setTeamMembers] = useState<MemberItem[]>([]);
@@ -46,7 +47,8 @@ export default function DashboardPage() {
       fetch('/api/analytics').then(r => r.json()),
     ]).then(([m, t, tk, dl, al, pos, analyticsResult]) => {
       setRecentLogs(al.slice(0, 10));
-      setTeamMembers(m.slice(0, 8));
+      const itMembersObj = (m as any[]).filter((x: any) => x.member_type !== 'Management');
+      setTeamMembers(itMembersObj.slice(0, 8));
       if (analyticsResult && analyticsResult.heatmap) setHeatmap(analyticsResult.heatmap);
 
       // Workload: count tasks per assignee
@@ -58,42 +60,67 @@ export default function DashboardPage() {
       });
       setWorkloads(Object.entries(wMap).map(([name, tasks]) => ({ name, tasks })).sort((a, b) => b.tasks - a.tasks));
 
-      setStats({
-        members: m.length,
-        tickets: {
-          total: t.length,
-          open: t.filter((x: { status: string }) => x.status === 'Open').length,
-          inProgress: t.filter((x: { status: string }) => x.status === 'In Progress').length,
-          resolved: t.filter((x: { status: string }) => ['Resolved', 'Closed'].includes(x.status)).length,
-        },
-        tasks: {
-          total: tk.length,
-          backlog: tk.filter((x: { status: string }) => x.status === 'Backlog').length,
-          inProgress: tk.filter((x: { status: string }) => x.status === 'In Progress').length,
-          review: tk.filter((x: { status: string }) => x.status === 'Review').length,
-          done: tk.filter((x: { status: string }) => x.status === 'Done').length,
-        },
-        logs: dl.length,
-        positions: pos.length,
-      });
+      setRawData({ tickets: t, tasks: tk, logs: dl, members: itMembersObj, positions: pos });
       setLoading(false);
       
-      // Trigger entrance animation slightly after render
-      setTimeout(() => {
-        if (containerRef.current) {
-          anime({
-            targets: containerRef.current.querySelectorAll('.animate-enter'),
-            translateY: [20, 0],
-            opacity: [0, 1],
-            delay: anime.stagger(100),
-            easing: 'spring(1, 80, 10, 0)',
-            duration: 1000
-          });
-        }
-      }, 50);
-
     }).catch(() => setLoading(false));
   }, []);
+
+  useEffect(() => {
+    if (!rawData.members.length && !rawData.positions.length) return;
+
+    let filteredTickets = rawData.tickets;
+    let filteredTasks = rawData.tasks;
+    let filteredLogs = rawData.logs;
+
+    if (timeFilter !== 'All Time') {
+       const isMatch = (val: string) => {
+         if (!val) return timeFilter === 'Today';
+         let d: Date;
+         if (val.includes('T') || val.includes(' ')) {
+           d = new Date(val);
+         } else {
+           const [y, m, day] = val.split('-');
+           d = new Date(Number(y), Number(m)-1, Number(day), 12, 0, 0);
+         }
+         const now = new Date();
+         if (timeFilter === 'Today') return d.toDateString() === now.toDateString();
+         if (timeFilter === 'Yesterday') {
+           const y = new Date(); y.setDate(y.getDate() - 1);
+           return d.toDateString() === y.toDateString();
+         }
+         if (timeFilter === 'Last 7 Days') {
+           const l = new Date(); l.setDate(l.getDate() - 7);
+           return d >= l;
+         }
+         if (timeFilter === 'This Month') return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+         return true;
+       };
+
+       filteredTickets = rawData.tickets.filter(x => isMatch(x.created_date));
+       filteredTasks = rawData.tasks.filter(x => isMatch(x.created_at || x.updated_at));
+       filteredLogs = rawData.logs.filter(x => isMatch(x.date));
+    }
+
+    setStats({
+      members: rawData.members.length,
+      tickets: {
+        total: filteredTickets.length,
+        open: filteredTickets.filter((x: { status: string }) => x.status === 'Open').length,
+        inProgress: filteredTickets.filter((x: { status: string }) => x.status === 'In Progress').length,
+        resolved: filteredTickets.filter((x: { status: string }) => ['Resolved', 'Closed'].includes(x.status)).length,
+      },
+      tasks: {
+        total: filteredTasks.length,
+        backlog: filteredTasks.filter((x: { status: string }) => x.status === 'Backlog').length,
+        inProgress: filteredTasks.filter((x: { status: string }) => x.status === 'In Progress').length,
+        review: filteredTasks.filter((x: { status: string }) => x.status === 'Review').length,
+        done: filteredTasks.filter((x: { status: string }) => x.status === 'Done').length,
+      },
+      logs: filteredLogs.length,
+      positions: rawData.positions.length,
+    });
+  }, [timeFilter, rawData]);
 
   const ticketPie = [
     { name: 'Open', value: stats.tickets.open, color: '#3B82F6' },
@@ -210,25 +237,34 @@ export default function DashboardPage() {
   );
 
   return (
-    <div className="max-w-7xl mx-auto pb-12" ref={containerRef}>
+    <div className="max-w-7xl mx-auto pb-12">
       
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end gap-4 mb-8 border-b pb-4" style={{ borderColor: 'var(--border)' }}>
-        <div className="animate-enter opacity-0">
+        <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 ease-out fill-mode-both">
           <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
           <p className="text-muted-foreground mt-1">
             {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
           </p>
         </div>
-        {canManageDashboard(currentUser) && (
-          <button
-            onClick={toggleEditLayout}
-            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${isEditingLayout ? 'bg-primary text-white shadow-md' : 'bg-surface border border-border text-foreground hover:bg-primary/5 hover:border-primary/30'}`}
-          >
-            <Settings2 className="w-4 h-4" />
-            {isEditingLayout ? 'Done' : 'Edit Layout'}
-          </button>
-        )}
+        <div className="flex items-center gap-3">
+          <select value={timeFilter} onChange={e => setTimeFilter(e.target.value)} className="bg-surface border border-border rounded-lg px-4 py-2 text-sm font-medium text-foreground focus:ring-1 focus:ring-primary outline-none">
+            <option value="Today">Today</option>
+            <option value="Yesterday">Yesterday</option>
+            <option value="Last 7 Days">Last 7 Days</option>
+            <option value="This Month">This Month</option>
+            <option value="All Time">All Time</option>
+          </select>
+          {canManageDashboard(currentUser) && (
+            <button
+              onClick={toggleEditLayout}
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${isEditingLayout ? 'bg-primary text-white shadow-md' : 'bg-surface border border-border text-foreground hover:bg-primary/5 hover:border-primary/30'}`}
+            >
+              <Settings2 className="w-4 h-4" />
+              {isEditingLayout ? 'Done' : 'Edit Layout'}
+            </button>
+          )}
+        </div>
       </div>
 
       {layout.map((blockId) => {
@@ -240,10 +276,10 @@ export default function DashboardPage() {
                 { label: 'Team Members', val: stats.members, sub: 'Active Accounts', icon: <Users className="w-5 h-5" />, cls: 'text-primary bg-primary/10 border-primary/20' },
                 { label: 'Active Tickets', val: stats.tickets.open + stats.tickets.inProgress, sub: `${stats.tickets.resolved} resolved`, icon: <Ticket className="w-5 h-5" />, cls: 'text-orange-400 bg-orange-500/10 border-orange-500/20' },
                 { label: 'Tasks', val: stats.tasks.total, sub: `${stats.tasks.done} done`, icon: <CheckSquare className="w-5 h-5" />, cls: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
-                { label: 'Daily Logs', val: stats.logs, sub: 'All time', icon: <Activity className="w-5 h-5" />, cls: 'text-violet-400 bg-violet-500/10 border-violet-500/20' },
+                { label: 'Daily Logs', val: stats.logs, sub: `in ${timeFilter}`, icon: <Activity className="w-5 h-5" />, cls: 'text-violet-400 bg-violet-500/10 border-violet-500/20' },
                 { label: 'Positions', val: stats.positions, sub: 'Jabatan', icon: <Briefcase className="w-5 h-5" />, cls: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20' },
               ].map(s => (
-                <div key={s.label} className="animate-enter opacity-0 rounded-2xl border p-4 flex items-center gap-3" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+                <div key={s.label} className="animate-in fade-in slide-in-from-bottom-4 duration-700 ease-out fill-mode-both rounded-2xl border p-4 flex items-center gap-3" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
                   <div className={`p-2.5 rounded-xl border flex-shrink-0 ${s.cls}`}>{s.icon}</div>
                   <div>
                     <p className="text-xs text-muted-foreground">{s.label}</p>
@@ -267,7 +303,7 @@ export default function DashboardPage() {
               </div>
               <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-4">
                 {auditLogs.slice(0, 15).length > 0 ? auditLogs.slice(0, 15).map((log) => (
-                  <div key={log.id} className="group flex items-start gap-3 relative animate-enter opacity-0">
+                  <div key={log.id} className="group flex items-start gap-3 relative animate-in fade-in slide-in-from-bottom-4 duration-700 ease-out fill-mode-both">
                     <div className="absolute left-[11px] top-6 bottom-[-16px] w-[2px] bg-border group-last:hidden" />
                     <div className="relative z-10 w-6 h-6 rounded-full bg-surface border-2 border-primary flex items-center justify-center flex-shrink-0 mt-0.5">
                       <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
@@ -298,7 +334,7 @@ export default function DashboardPage() {
           <LayoutWrapperBlock key="charts" id="charts">
             {/* Charts Row */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              <div className="animate-enter opacity-0 rounded-2xl p-5 border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+              <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 ease-out fill-mode-both rounded-2xl p-5 border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
                 <h2 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-4"><BarChart3 className="w-4 h-4 text-primary" /> Task Status</h2>
                 <ResponsiveContainer width="100%" height={200}>
                   <BarChart data={taskBar} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
@@ -313,7 +349,7 @@ export default function DashboardPage() {
                 </ResponsiveContainer>
               </div>
 
-              <div className="animate-enter opacity-0 rounded-2xl p-5 border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+              <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 ease-out fill-mode-both rounded-2xl p-5 border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
                 <h2 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-4"><AlertCircle className="w-4 h-4 text-orange-400" /> Ticket Breakdown</h2>
                 {ticketPie.length > 0 ? (
                   <ResponsiveContainer width="100%" height={200}>
@@ -336,7 +372,7 @@ export default function DashboardPage() {
             {/* Workload + Team */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {/* Workload Distribution */}
-              <div className="animate-enter opacity-0 rounded-2xl p-5 border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+              <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 ease-out fill-mode-both rounded-2xl p-5 border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
                 <h2 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-4"><BarChart3 className="w-4 h-4 text-violet-400" /> Workload Distribution</h2>
                 {workloads.length > 0 ? (
                   <div className="space-y-3">
@@ -359,7 +395,7 @@ export default function DashboardPage() {
               </div>
 
               {/* Team Members */}
-              <div className="animate-enter opacity-0 rounded-2xl p-5 border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+              <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 ease-out fill-mode-both rounded-2xl p-5 border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
                 <h2 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-4"><Users className="w-4 h-4 text-primary" /> Team Members</h2>
                 <div className="space-y-2 max-h-48 overflow-y-auto custom-scrollbar">
                   {teamMembers.map((m, i) => (
@@ -385,7 +421,7 @@ export default function DashboardPage() {
 
         if (blockId === 'heatmap') return (
           <LayoutWrapperBlock key="heatmap" id="heatmap">
-            <div className="animate-enter opacity-0 rounded-2xl border p-5 flex flex-col" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 ease-out fill-mode-both rounded-2xl border p-5 flex flex-col" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
                   <Activity className="w-4 h-4 text-emerald-500" /> 30-Day Workload Heatmap
@@ -464,7 +500,7 @@ export default function DashboardPage() {
           <LayoutWrapperBlock key="activityWorkflow" id="activityWorkflow">
             {/* Activity + Workflow Info */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-              <div className="lg:col-span-2 animate-enter opacity-0 rounded-2xl p-5 border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+              <div className="lg:col-span-2 animate-in fade-in slide-in-from-bottom-4 duration-700 ease-out fill-mode-both rounded-2xl p-5 border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
                 <h2 className="text-sm font-semibold text-foreground flex items-center gap-2 mb-4"><Clock className="w-4 h-4 text-primary" /> Recent Activity</h2>
                 <div className="space-y-1.5 max-h-64 overflow-y-auto custom-scrollbar">
                   {recentLogs.length === 0 && <p className="text-sm text-muted-foreground text-center py-6">No activity yet</p>}
@@ -483,7 +519,7 @@ export default function DashboardPage() {
               </div>
 
               {/* Workflow Guide */}
-              <div className="animate-enter opacity-0 rounded-2xl p-5 border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+              <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 ease-out fill-mode-both rounded-2xl p-5 border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
                 <h2 className="text-sm font-semibold text-foreground mb-4">📋 IT Workflow</h2>
                 <div className="space-y-3">
                   {[

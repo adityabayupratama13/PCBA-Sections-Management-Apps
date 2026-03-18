@@ -36,7 +36,7 @@ export default function TasksPage() {
   const { currentUser, members } = useAuth();
 
   // All team members from DB
-  const allMembers: TeamMember[] = members.filter(m => m.status === 'Active');
+  const allMembers: TeamMember[] = members.filter(m => m.status === 'Active' && m.member_type !== 'Management');
 
   const [search, setSearch] = useState('');
   const [filterAssignee, setFilterAssignee] = useState('All');
@@ -408,7 +408,7 @@ export default function TasksPage() {
 
           <div>
             <label className="block text-sm font-medium text-muted-foreground mb-1.5">Due Date</label>
-            <input name="dueDate" type="date" defaultValue={editingTask?.due_date} className={inputClass} />
+            <input name="dueDate" type="date" defaultValue={editingTask?.due_date || new Date().toISOString().split('T')[0]} className={inputClass} />
           </div>
 
           <div className="border-t border-border pt-4 mt-2">

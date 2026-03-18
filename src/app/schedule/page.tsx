@@ -47,7 +47,7 @@ export default function SchedulePage() {
   const [selectedAssignees, setSelectedAssignees] = useState<string[]>([]);
   const [showAssigneeDropdown, setShowAssigneeDropdown] = useState(false);
   const { currentUser, members } = useAuth();
-  const allMembers = [{ name: 'Aditya Bayu Pratama' }, ...members];
+  const allMembers = [{ name: 'Aditya Bayu Pratama' }, ...members.filter(m => m.name !== 'Aditya Bayu Pratama' && m.member_type !== 'Management')];
 
   // ─── Week helpers ───
   const getWeekRange = () => {

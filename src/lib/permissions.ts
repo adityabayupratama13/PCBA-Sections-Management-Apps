@@ -37,7 +37,7 @@ export const canManageAttendanceAdmin = (m: Member | null) =>
   isSupervisor(m) || isLeader(m) || isManagement(m);
 
 /** Everyone can submit their own OT / Leave */
-export const canSubmitRequest = (_m: Member | null) => true;
+export const canSubmitRequest = () => true;
 
 /** IT Supervisor can approve/decline first-level (OT + Leave) */
 export const canApproveAsITSupervisor = (m: Member | null) =>

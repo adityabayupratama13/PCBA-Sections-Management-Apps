@@ -7,15 +7,16 @@ import { useAuth } from '@/context/AuthContext';
 import { format, addDays, startOfWeek, subMonths, setDate, isWithinInterval, addMonths } from 'date-fns';
 import { toast } from 'sonner';
 import { Modal } from '@/components/Modal';
-import { canManageAttendanceAdmin } from '@/lib/permissions';
+import { canManageAttendanceAdmin, canApproveAsLeader, canApproveAsITSupervisor, canApproveAsManager } from '@/lib/permissions';
 import * as xlsx from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 // --- Types ---
 interface AttendanceLog { id: number; member_name: string; date: string; shift: string; ot_start_time?: string; ot_end_time?: string; overtime_hours: number; overtime_desc: string; [key: string]: unknown; }
-interface LeaveReq { id: number; member_name: string; leave_type: string; application_date: string; start_date: string; end_date: string; days_count: number; reason: string; status: string; approved_by: string; userName?: string; [key: string]: unknown; }
+interface LeaveReq { id: number; member_name: string; leave_type: string; application_date: string; start_date: string; end_date: string; days_count: number; reason: string; status: string; approved_by: string; leader_approved_by?: string; it_supervisor_approved_by?: string; manager_approved_by?: string; decline_reason?: string; revision_count: number; userName?: string; isRevision?: boolean; [key: string]: unknown; }
 interface LeaveBalance { id: string | number; member_name: string; balance: number; last_accrual_month: string; [key: string]: unknown; }
+interface OvertimeReq { id: number; member_name: string; request_date: string; start_time: string; end_time: string; hours: number; reason: string; revision_count: number; status: string; it_supervisor_approved_by: string; manager_approved_by: string; declined_by: string; decline_reason: string; created_at: string; updated_at: string; isRevision?: boolean; [key: string]: unknown; }
 
 const SHIFT_OPTIONS = ['Normal Shift', 'Shift 1', 'Shift 2', 'Shift 3', 'Off', 'Leave'];
 const LEAVE_TYPES = ['Annual Leave', 'Compassionate Leave', 'Maternity Leave', 'Paternity Leave', 'Marriage Leave', 'No Pay Leave'];
@@ -47,9 +48,10 @@ export default function AttendancePage() {
   const { data: logs, refetch: fetchLogs, create: createLog } = useApi<AttendanceLog>('attendance');
   const { data: leaves, refetch: fetchLeaves, create: createLeave, update: updateLeave } = useApi<LeaveReq>('leaves');
   const { data: balances, refetch: fetchBalances, update: updateBalance } = useApi<LeaveBalance>('leave-balances');
+  const { data: overtimes, refetch: fetchOvertimes, create: createOvertime, update: updateOvertime } = useApi<OvertimeReq>('overtime');
   
   // Refresh on mount
-  useEffect(() => { fetchLogs(); fetchLeaves(); fetchBalances(); }, [fetchLogs, fetchLeaves, fetchBalances]);
+  useEffect(() => { fetchLogs(); fetchLeaves(); fetchBalances(); fetchOvertimes(); }, [fetchLogs, fetchLeaves, fetchBalances, fetchOvertimes]);
   
   const [activeTab, setActiveTab] = useState<'roster' | 'overtime' | 'leave' | 'employee-status'>('roster');
   
@@ -63,7 +65,8 @@ export default function AttendancePage() {
   const [otSearch, setOtSearch] = useState('');
   const [selectedOtMember, setSelectedOtMember] = useState<string | null>(null);
   const [isOtModalOpen, setIsOtModalOpen] = useState(false);
-  const [editingOtLog, setEditingOtLog] = useState<Partial<AttendanceLog> | null>(null);
+  const [editingOtLog, setEditingOtLog] = useState<Partial<OvertimeReq> | null>(null);
+  const [declineOtId, setDeclineOtId] = useState<number | null>(null);
   
   // Tab 3: Leave State
   const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
@@ -72,7 +75,8 @@ export default function AttendancePage() {
   const [editingLeaveLog, setEditingLeaveLog] = useState<LeaveReq | null>(null);
   const [viewingLeave, setViewingLeave] = useState<LeaveReq | null>(null);
   const [deleteLeaveId, setDeleteLeaveId] = useState<number | null>(null);
-  const [deleteOtLog, setDeleteOtLog] = useState<AttendanceLog | null>(null);
+  const [declineLeaveId, setDeclineLeaveId] = useState<number | null>(null);
+  const [deleteOtLog, setDeleteOtLog] = useState<OvertimeReq | null>(null);
   
   // Tab 4: Employee Status State
   const [isEmpStatusModalOpen, setIsEmpStatusModalOpen] = useState(false);
@@ -123,7 +127,8 @@ export default function AttendancePage() {
     let count = 0;
     try {
       const nextWeekMonday = addDays(weekStart, 7);
-      for (const m of members) {
+      const activeItMembers = members.filter(m => m.member_type !== 'Management');
+      for (const m of activeItMembers) {
         if (m.status !== 'Active') continue;
         const isAnalyst = m.role.includes('Analyst & Support');
         
@@ -180,7 +185,7 @@ export default function AttendancePage() {
   const exportRoster = (type: 'excel' | 'pdf') => {
     const datesHeader = rosterDates.map(d => format(d, 'dd MMM'));
     const headers = ['Team Member', 'Role', ...datesHeader];
-    const dataObj = members.filter(m => m.status === 'Active').map(m => {
+    const dataObj = members.filter(m => m.status === 'Active' && m.member_type !== 'Management').map(m => {
       const row: Record<string, string | number> = { 'Team Member': m.name, 'Role': m.role };
       rosterDates.forEach(d => { row[format(d, 'dd MMM')] = (logs.find(l => l.member_name === m.name && l.date === format(d, 'yyyy-MM-dd'))?.shift || 'Off') as string; });
       return row;
@@ -232,7 +237,7 @@ export default function AttendancePage() {
             </tr>
           </thead>
           <tbody className="divide-y divide-border bg-surface">
-            {members.filter(m => m.status === 'Active').map(member => {
+            {members.filter(m => m.status === 'Active' && m.member_type !== 'Management').map(member => {
               return (
                 <tr key={member.id} className="hover:bg-primary/5 transition-colors">
                   <td className="px-4 py-3 border-r border-border">
@@ -287,6 +292,21 @@ export default function AttendancePage() {
             })}
           </tbody>
         </table>
+        {/* Leave Decline Modal */}
+        <Modal isOpen={!!declineLeaveId} onClose={() => setDeclineLeaveId(null)} title="Decline Leave Request">
+          <form onSubmit={handleLeaveReject} className="space-y-4">
+            <p className="text-sm text-muted-foreground">Please provide a reason for declining this request.</p>
+            <div>
+              <label className="block text-xs font-semibold text-muted-foreground mb-1">Reason *</label>
+              <textarea name="reason" rows={3} className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:outline-none focus:border-primary placeholder-muted" placeholder="Enter reason" required />
+            </div>
+            <div className="flex justify-end gap-3 pt-4 border-t border-border">
+              <button type="button" onClick={() => setDeclineLeaveId(null)} className="px-4 py-2 text-sm font-medium text-foreground hover:bg-muted rounded-lg transition-colors">Cancel</button>
+              <button type="submit" className="px-4 py-2 bg-destructive hover:bg-destructive/90 text-white text-sm font-medium rounded-lg shadow-sm">Decline Leave</button>
+            </div>
+          </form>
+        </Modal>
+
       </div>
     </div>
   );
@@ -321,33 +341,74 @@ export default function AttendancePage() {
       if (dayOfWeek === 6 && hours > 1) { // 6 = Saturday
         hours -= 1;
       }
-
-      const existingShift = logs.find(l => l.member_name === mem && l.date === dateStr)?.shift || 'Off';
       
-      const res = await createLog({
-        member_name: mem, 
-        date: dateStr, 
-        shift: existingShift,
-        ot_start_time: start,
-        ot_end_time: end,
-        overtime_hours: Number(hours.toFixed(2)), 
-        overtime_desc: fd.get('reason') as string, 
-        userName: currentUser?.name || ''
-      } as unknown as AttendanceLog);
-      
-      if (res) {
-        toast.success('Overtime recorded successfully');
-        setIsOtModalOpen(false);
-        fetchLogs();
+      if (editingOtLog?.id) {
+        await updateOvertime({
+          id: editingOtLog.id,
+          start_time: start,
+          end_time: end,
+          hours: Number(hours.toFixed(2)),
+          reason: fd.get('reason') as string,
+          isRevision: true
+        } as unknown as OvertimeReq);
+        toast.success('Overtime revised and resubmitted');
+      } else {
+        await createOvertime({
+          member_name: mem, 
+          request_date: dateStr, 
+          start_time: start,
+          end_time: end,
+          hours: Number(hours.toFixed(2)), 
+          reason: fd.get('reason') as string
+        } as unknown as OvertimeReq);
+        toast.success('Overtime requested successfully');
       }
-    } catch { toast.error('Failed to record overtime'); }
+      setIsOtModalOpen(false);
+      fetchOvertimes();
+    } catch { toast.error('Failed to submit overtime'); }
   };
   
+  const handleOTApprove = async (logId: number) => {
+    try {
+      const isManagerApproving = currentUser?.member_type === 'Management';
+      const payload: Partial<OvertimeReq> = { id: logId };
+      
+      if (isManagerApproving) {
+        payload.status = 'Approved';
+        payload.manager_approved_by = currentUser?.name;
+      } else {
+        payload.status = 'IT_Approved';
+        payload.it_supervisor_approved_by = currentUser?.name;
+      }
+      
+      await updateOvertime(payload as OvertimeReq);
+      toast.success('Overtime Approved');
+      fetchOvertimes();
+    } catch { toast.error('Failed to approve OT'); }
+  };
+
+  const handleOTDecline = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!declineOtId) return;
+    const fd = new FormData(e.target as HTMLFormElement);
+    try {
+      await updateOvertime({
+        id: declineOtId,
+        status: 'Declined',
+        declined_by: currentUser?.name,
+        decline_reason: fd.get('reason') as string
+      } as unknown as OvertimeReq);
+      toast.success('Overtime Declined');
+      setDeclineOtId(null);
+      fetchOvertimes();
+    } catch { toast.error('Failed to decline OT'); }
+  };
+
   const confirmRemoveOT = async () => {
     if (!deleteOtLog) return;
     try {
-      await createLog({ member_name: deleteOtLog.member_name, date: deleteOtLog.date, shift: deleteOtLog.shift, overtime_hours: 0, overtime_desc: '', userName: currentUser?.name || '' } as unknown as AttendanceLog);
-      fetchLogs(); toast.success('Overtime removed');
+      await fetch(`/api/overtime?id=${deleteOtLog.id}`, { method: 'DELETE' });
+      fetchOvertimes(); toast.success('Overtime removed');
     } catch { toast.error('Error removing OT'); }
     setDeleteOtLog(null);
   };
@@ -365,22 +426,28 @@ export default function AttendancePage() {
     const endOfCutoff = setDate(targetDate, 15);
     endOfCutoff.setHours(23, 59, 59, 999);
     
-    // Filter members and compute their OT within this interval
-    const stats = members.filter(m => m.status === 'Active' && m.name.toLowerCase().includes(otSearch.toLowerCase()) && (isManager || m.name === currentUser?.name)).map(m => {
+    const stats = members.filter(m => m.status === 'Active' && m.member_type !== 'Management' && m.name.toLowerCase().includes(otSearch.toLowerCase()) && (isManager || m.name === currentUser?.name)).map(m => {
       let periodOt = 0;
       let periodOtHidup = 0;
       let ytdOt = 0;
-      const memberLogs = logs.filter(l => l.member_name === m.name && l.overtime_hours > 0);
+      const memberLogs = overtimes.filter(l => l.member_name === m.name && l.status !== 'Declined' && l.hours > 0);
       
       memberLogs.forEach(l => {
-        const d = new Date(l.date);
-        ytdOt += l.overtime_hours;
-        if (isWithinInterval(d, { start: startOfCutoff, end: endOfCutoff })) {
-          periodOt += l.overtime_hours;
-          periodOtHidup += calculateJamHidup(l.overtime_hours, m.role);
+        const [yr, mo, dy] = String(l.request_date).split('-');
+        const reqDateLocal = new Date(Number(yr), Number(mo) - 1, Number(dy), 12, 0, 0);
+        const hrs = Number(l.hours) || 0;
+        ytdOt += hrs;
+        if (isWithinInterval(reqDateLocal, { start: startOfCutoff, end: endOfCutoff })) {
+          periodOt += hrs;
+          periodOtHidup += calculateJamHidup(hrs, m.role);
         }
       });
-      return { member: m, periodOt, periodOtHidup, ytdOt, logsToEdit: memberLogs.filter(l => isWithinInterval(new Date(l.date), { start: startOfCutoff, end: endOfCutoff })) };
+      return { member: m, periodOt, periodOtHidup, ytdOt, logsToEdit: overtimes.filter(l => {
+        if (l.member_name !== m.name) return false;
+        const [yr, mo, dy] = String(l.request_date).split('-');
+        const reqDateLocal = new Date(Number(yr), Number(mo) - 1, Number(dy), 12, 0, 0);
+        return isWithinInterval(reqDateLocal, { start: startOfCutoff, end: endOfCutoff });
+      }) };
     });
 
     useEffect(() => {
@@ -396,7 +463,7 @@ export default function AttendancePage() {
       stats.forEach(s => {
         if (s.logsToEdit.length === 0) return;
         s.logsToEdit.forEach(l => {
-          dataObj.push({ 'Member': s.member.name, 'Role': s.member.role, 'Date & Desc': `${l.date} - ${l.overtime_desc}`, 'Time Range': `${l.ot_start_time}-${l.ot_end_time}`, 'Jam Mati': l.overtime_hours, 'Jam Hidup': calculateJamHidup(l.overtime_hours, s.member.role).toFixed(1) });
+          dataObj.push({ 'Member': s.member.name, 'Role': s.member.role, 'Date & Desc': `${l.request_date} - ${l.reason}`, 'Time Range': `${l.start_time}-${l.end_time}`, 'Jam Mati': Number(l.hours), 'Jam Hidup': calculateJamHidup(Number(l.hours), s.member.role).toFixed(1), 'Status': l.status });
         });
       });
       if (type === 'excel') exportToExcel(dataObj, `Overtime_Report_${format(endOfCutoff, 'MMM_yyyy')}`);
@@ -497,7 +564,7 @@ export default function AttendancePage() {
                       <div className="bg-primary/10 border border-primary/20 rounded-lg px-3 py-1.5 flex flex-col items-center min-w-[80px]">
                         <span className="text-[10px] text-primary uppercase font-semibold">Total (P) Hidup</span>
                         <span className="text-sm font-bold text-primary">
-                          {currentMemberStat.logsToEdit.reduce((acc, l) => acc + calculateJamHidup(l.overtime_hours, currentMemberStat.member.role), 0).toFixed(1)}h
+                          {currentMemberStat.logsToEdit.reduce((acc, l) => acc + (l.status !== 'Declined' ? calculateJamHidup(Number(l.hours), currentMemberStat.member.role) : 0), 0).toFixed(1)}h
                         </span>
                       </div>
                     </div>
@@ -511,13 +578,16 @@ export default function AttendancePage() {
                           <th className="px-5 py-3 text-center">Time Range</th>
                           <th className="px-5 py-3 text-center">Jam Mati<br/><span className="lowercase font-normal mt-0.5 text-[9px] block">Actual</span></th>
                           <th className="px-5 py-3 text-center">Jam Hidup<br/><span className="lowercase font-normal mt-0.5 text-[9px] block">Formulated</span></th>
-                          {isManager && <th className="px-5 py-3 text-right">Actions</th>}
+                          <th className="px-5 py-3 text-center">Status</th>
+                          <th className="px-5 py-3 text-right">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border">
                         {currentMemberStat.logsToEdit.length > 0 ? (
                           currentMemberStat.logsToEdit.map((l, idx) => {
-                            const jnHidup = calculateJamHidup(l.overtime_hours, currentMemberStat.member.role);
+                            const jnHidup = calculateJamHidup(Number(l.hours), currentMemberStat.member.role);
+                            const isITSpv = currentUser?.role === 'IT Supervisor';
+                            const isMgmt = currentUser?.member_type === 'Management';
                             return (
                               <motion.tr 
                                 initial={{ opacity: 0, y: 10 }}
@@ -526,25 +596,52 @@ export default function AttendancePage() {
                                 key={l.id} 
                                 className="hover:bg-muted/30 transition-colors"
                               >
-                                <td className="px-5 py-4 w-[300px]">
-                                  <div className="font-medium text-foreground">{format(new Date(l.date), 'EEEE, dd MMM yyyy')}</div>
-                                  <div className="text-xs text-muted-foreground mt-1 line-clamp-2" title={l.overtime_desc}>{l.overtime_desc || 'No reason specified'}</div>
+                                <td className="px-5 py-4 w-[250px]">
+                                  <div className="font-medium text-foreground">{format(new Date(l.request_date), 'EEEE, dd MMM yyyy')}</div>
+                                  <div className="text-xs text-muted-foreground mt-1 line-clamp-2" title={l.reason}>{l.reason || 'No reason specified'}</div>
+                                  {l.revision_count > 0 && <span className="text-[9px] text-amber-500 font-bold bg-amber-500/10 px-1 py-0.5 rounded ml-1 mt-1 inline-block">Rev: {l.revision_count}</span>}
                                 </td>
                                 <td className="px-5 py-4 text-center">
                                   <span className="bg-background border border-border px-2.5 py-1 rounded text-xs font-mono font-medium shadow-sm">
-                                    {l.ot_start_time || '--:--'} - {l.ot_end_time || '--:--'}
+                                    {l.start_time || '--:--'} - {l.end_time || '--:--'}
                                   </span>
                                 </td>
-                                <td className="px-5 py-4 text-center text-foreground font-semibold">{Number(l.overtime_hours).toFixed(1)}h</td>
+                                <td className="px-5 py-4 text-center text-foreground font-semibold">{Number(l.hours).toFixed(1)}h</td>
                                 <td className="px-5 py-4 text-center font-bold text-primary">{jnHidup.toFixed(1)}h</td>
-                                {isManager && (
-                                  <td className="px-5 py-4 text-right">
-                                     <div className="flex justify-end items-center gap-3">
-                                       <button onClick={() => { setEditingOtLog(l); setIsOtModalOpen(true); }} className="text-xs font-medium text-primary hover:text-primary/80 transition-colors">Edit</button>
-                                       <button onClick={() => setDeleteOtLog(l)} className="text-xs font-medium text-destructive hover:text-destructive/80 transition-colors">Remove</button>
-                                     </div>
-                                  </td>
-                                )}
+                                <td className="px-5 py-4 text-center">
+                                  <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase
+                                    ${l.status === 'Approved' ? 'bg-success/10 text-success border border-success/20' : 
+                                      l.status === 'Declined' ? 'bg-destructive/10 text-destructive border border-destructive/20' : 
+                                      l.status === 'IT_Approved' ? 'bg-blue-500/10 text-blue-500 border border-blue-500/20' :
+                                      'bg-orange-500/10 text-orange-600 border border-orange-500/20'}`}>
+                                    {l.status === 'IT_Approved' ? 'Waiting Manager' : l.status}
+                                  </span>
+                                  {l.status === 'Declined' && l.decline_reason && (
+                                    <div className="text-[10px] text-destructive italic mt-1 max-w-[120px] truncate mx-auto" title={l.decline_reason}>{l.decline_reason}</div>
+                                  )}
+                                </td>
+                                <td className="px-5 py-4 text-right">
+                                   <div className="flex justify-end items-center gap-2">
+                                     {l.status === 'Pending' && isITSpv && (
+                                       <>
+                                        <button onClick={() => handleOTApprove(l.id)} className="p-1.5 hover:bg-success/20 text-success bg-success/10 border border-success/20 rounded-lg transition-colors shadow-sm" title="Approve"><CheckCircle2 className="w-4 h-4" /></button>
+                                        <button onClick={() => setDeclineOtId(l.id)} className="p-1.5 hover:bg-destructive/20 text-destructive bg-destructive/10 border border-destructive/20 rounded-lg transition-colors shadow-sm" title="Decline"><XCircle className="w-4 h-4" /></button>
+                                       </>
+                                     )}
+                                     {l.status === 'IT_Approved' && isMgmt && (
+                                       <>
+                                        <button onClick={() => handleOTApprove(l.id)} className="p-1.5 hover:bg-success/20 text-success bg-success/10 border border-success/20 rounded-lg transition-colors shadow-sm" title="Approve"><CheckCircle2 className="w-4 h-4" /></button>
+                                        <button onClick={() => setDeclineOtId(l.id)} className="p-1.5 hover:bg-destructive/20 text-destructive bg-destructive/10 border border-destructive/20 rounded-lg transition-colors shadow-sm" title="Decline"><XCircle className="w-4 h-4" /></button>
+                                       </>
+                                     )}
+                                     {(isITSpv || isMgmt || l.member_name === currentUser?.name) && l.status !== 'Approved' && (
+                                       <button onClick={() => { setEditingOtLog(l); setIsOtModalOpen(true); }} className="text-xs font-medium text-primary hover:text-primary/80 transition-colors ml-2 py-1 underline underline-offset-2">Revise/Edit</button>
+                                     )}
+                                     {isManager && (
+                                       <button onClick={() => setDeleteOtLog(l)} className="text-xs font-medium text-destructive hover:text-destructive/80 transition-colors ml-2">Delete</button>
+                                     )}
+                                   </div>
+                                </td>
                               </motion.tr>
                             );
                           })
@@ -588,8 +685,9 @@ export default function AttendancePage() {
           end_date: fd.get('end_date') as string,
           days_count: Number(fd.get('days_count')),
           reason: fd.get('reason') as string,
-          userName: currentUser?.name || ''
-        });
+          userName: currentUser?.name || '',
+          isRevision: editingLeaveLog.status === 'Declined'
+        } as LeaveReq);
         toast.success('Leave updated successfully');
       } else {
         await createLeave({
@@ -608,12 +706,47 @@ export default function AttendancePage() {
     } catch { toast.error('Failed to submit application'); }
   };
   
-  const handleApproveReject = async (id: number, status: string) => {
+  const handleLeaveApprove = async (l: LeaveReq) => {
     try {
-      await updateLeave({ id, status, approved_by: currentUser?.name || '', userName: currentUser?.name || '' });
-      toast.success(`Leave ${status}`);
+      const payload: Partial<LeaveReq> = { id: l.id };
+      
+      if (l.status === 'Pending' && canApproveAsLeader(currentUser)) {
+        payload.status = 'Leader_Approved';
+        payload.leader_approved_by = currentUser?.name;
+      } else if (l.status === 'Leader_Approved' && canApproveAsITSupervisor(currentUser)) {
+        payload.status = 'IT_Approved';
+        payload.it_supervisor_approved_by = currentUser?.name;
+      } else if (l.status === 'IT_Approved' && canApproveAsManager(currentUser)) {
+        payload.status = 'Approved';
+        payload.manager_approved_by = currentUser?.name;
+        payload.approved_by = currentUser?.name;
+      } else {
+        toast.error('Check your approval rights');
+        return;
+      }
+      
+      await updateLeave({ ...payload, userName: currentUser?.name || '' } as LeaveReq);
+      toast.success('Leave Approved');
       fetchLeaves(); fetchLogs(); fetchBalances();
-    } catch { toast.error('Failed to update leave request'); }
+    } catch { toast.error('Failed to approve leave request'); }
+  };
+
+  const handleLeaveReject = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!declineLeaveId) return;
+    const fd = new FormData(e.target as HTMLFormElement);
+    try {
+      await updateLeave({ 
+        id: declineLeaveId, 
+        status: 'Declined', 
+        declined_by: currentUser?.name || '', 
+        decline_reason: fd.get('reason') as string,
+        userName: currentUser?.name || '' 
+      } as unknown as LeaveReq);
+      toast.success('Leave Rejected');
+      setDeclineLeaveId(null);
+      fetchLeaves(); fetchLogs(); fetchBalances();
+    } catch { toast.error('Failed to reject leave request'); }
   };
 
   const confirmLeaveDelete = async () => {
@@ -643,7 +776,7 @@ export default function AttendancePage() {
   };
 
   const LeaveTab = () => {
-    const balancesDisplay = members.filter(m => m.status === 'Active').map(m => {
+    const balancesDisplay = members.filter(m => m.status === 'Active' && m.member_type !== 'Management').map(m => {
       const bObj = balances?.find(b => b.member_name === m.name);
       return {
         name: m.name,
@@ -727,18 +860,24 @@ export default function AttendancePage() {
                       <td className="px-4 py-3">
                         <span className={`px-2 py-1 rounded text-[10px] font-bold uppercase
                           ${l.status === 'Approved' ? 'bg-success/10 text-success border border-success/20' : 
-                            l.status === 'Rejected' ? 'bg-destructive/10 text-destructive border border-destructive/20' : 
+                            l.status === 'Declined' ? 'bg-destructive/10 text-destructive border border-destructive/20' : 
                             'bg-orange-500/10 text-orange-600 border border-orange-500/20'}`}>
                           {l.status}
                         </span>
-                        {l.status !== 'Pending' && <div className="text-[9px] text-muted-foreground mt-1">By: {l.approved_by}</div>}
+                        {l.revision_count > 0 && <span className="ml-1 text-[9px] text-muted-foreground bg-muted px-1 rounded-sm">Rev: {l.revision_count}</span>}
+                        {l.status === 'Approved' && <div className="text-[9px] text-muted-foreground mt-1">Final: {l.approved_by}</div>}
+                        {l.status === 'Declined' && <div className="text-[9px] text-destructive mt-1">By: {l.approved_by}<br/>Reason: {l.decline_reason}</div>}
+                        {(l.status === 'Leader_Approved' || l.status === 'IT_Approved' || l.status === 'Approved') && <div className="text-[8px] text-muted-foreground mt-1">Ldr: {l.leader_approved_by || '-'}</div>}
+                        {(l.status === 'IT_Approved' || l.status === 'Approved') && <div className="text-[8px] text-muted-foreground">IT: {l.it_supervisor_approved_by || '-'}</div>}
                       </td>
                       <td className="px-4 py-3 text-right">
                         <div className="flex justify-end gap-2 items-center">
-                          {l.status === 'Pending' && isManager && (
+                          {((l.status === 'Pending' && canApproveAsLeader(currentUser)) ||
+                            (l.status === 'Leader_Approved' && canApproveAsITSupervisor(currentUser)) ||
+                            (l.status === 'IT_Approved' && canApproveAsManager(currentUser))) && (
                             <>
-                              <button onClick={() => handleApproveReject(l.id, 'Approved')} className="p-1 hover:bg-success/20 text-success rounded transition-colors" title="Approve"><CheckCircle2 className="w-4 h-4" /></button>
-                              <button onClick={() => handleApproveReject(l.id, 'Rejected')} className="p-1 hover:bg-destructive/20 text-destructive rounded transition-colors" title="Reject"><XCircle className="w-4 h-4" /></button>
+                              <button onClick={() => handleLeaveApprove(l)} className="p-1 hover:bg-success/20 text-success rounded transition-colors" title="Approve"><CheckCircle2 className="w-4 h-4" /></button>
+                              <button onClick={() => setDeclineLeaveId(l.id)} className="p-1 hover:bg-destructive/20 text-destructive rounded transition-colors" title="Decline"><XCircle className="w-4 h-4" /></button>
                             </>
                           )}
                           {(isManager || l.member_name === currentUser?.name) && (
@@ -747,7 +886,7 @@ export default function AttendancePage() {
                           {isManager && (
                             <button onClick={() => setDeleteLeaveId(l.id)} className="p-1 hover:bg-destructive/20 text-destructive rounded transition-colors" title="Delete Leave"><Trash2 className="w-3.5 h-3.5" /></button>
                           )}
-                          {l.status === 'Pending' && !isManager && <span className="text-[10px] text-muted-foreground italic ml-2">Wait</span>}
+                          {!canApproveAsLeader(currentUser) && !canApproveAsITSupervisor(currentUser) && !canApproveAsManager(currentUser) && l.status !== 'Approved' && l.status !== 'Declined' && <span className="text-[10px] text-muted-foreground italic ml-2">Wait</span>}
                         </div>
                       </td>
                     </tr>
@@ -815,7 +954,7 @@ export default function AttendancePage() {
 
     const exportEmpStatus = (type: 'excel' | 'pdf') => {
       const headers = ['Name', 'Badge', 'Role', 'Grade', 'Join Date', 'Finish Date', 'Working Duration', 'Plan Contract (Months)', 'Status', 'Days Left'];
-      const dataObj: Record<string, string | number>[] = members.map(m => {
+      const dataObj: Record<string, string | number>[] = members.filter(m => m.member_type !== 'Management').map(m => {
         let daysLeft: number | string = '--';
         if (m.finish_date) {
            const timeDiff = new Date(m.finish_date).getTime() - new Date().getTime();
@@ -854,7 +993,7 @@ export default function AttendancePage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {members.map(m => {
+                {members.filter(m => m.member_type !== 'Management').map(m => {
                   let daysLeftText = '--';
                   let isEndingSoon = false;
                   let isFinished = false;
@@ -1032,7 +1171,7 @@ export default function AttendancePage() {
           <div>
             <label className="block text-sm font-medium text-muted-foreground mb-1.5">Employee Name *</label>
             <select name="member_name" required defaultValue={editingLeaveLog?.member_name || currentUser?.name} disabled={!!editingLeaveLog} className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-foreground focus:ring-1 focus:ring-primary outline-none disabled:opacity-50 disabled:cursor-not-allowed">
-              {isManager ? members.filter(m => m.status === 'Active').map(m => <option key={m.id} value={m.name}>{m.name}</option>) : <option value={currentUser?.name}>{currentUser?.name}</option>}
+              {isManager ? members.filter(m => m.status === 'Active' && m.member_type !== 'Management').map(m => <option key={m.id} value={m.name}>{m.name}</option>) : <option value={currentUser?.name}>{currentUser?.name}</option>}
             </select>
             {!!editingLeaveLog && <input type="hidden" name="member_name" value={editingLeaveLog.member_name} />}
           </div>
@@ -1080,26 +1219,26 @@ export default function AttendancePage() {
           <div>
             <label className="block text-sm font-medium text-muted-foreground mb-1.5">Employee Name *</label>
             <select name="member_name" required defaultValue={editingOtLog?.member_name || currentUser?.name} className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-foreground focus:ring-1 focus:ring-primary outline-none">
-              {isManager ? members.filter(m => m.status === 'Active').map(m => <option key={m.id} value={m.name}>{m.name}</option>) : <option value={currentUser?.name}>{currentUser?.name}</option>}
+              {isManager ? members.filter(m => m.status === 'Active' && m.member_type !== 'Management').map(m => <option key={m.id} value={m.name}>{m.name}</option>) : <option value={currentUser?.name}>{currentUser?.name}</option>}
             </select>
           </div>
           <div>
              <label className="block text-sm font-medium text-muted-foreground mb-1.5">Date *</label>
-             <input name="date" type="date" required defaultValue={editingOtLog?.date || format(new Date(), 'yyyy-MM-dd')} className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-foreground focus:ring-1 focus:ring-primary outline-none" />
+             <input name="date" type="date" required defaultValue={(editingOtLog?.request_date as string) || format(new Date(), 'yyyy-MM-dd')} className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-foreground focus:ring-1 focus:ring-primary outline-none" />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
              <div>
                 <label className="block text-sm font-medium text-muted-foreground mb-1.5">Start Hour *</label>
-                <input name="ot_start_time" type="time" required defaultValue={editingOtLog?.ot_start_time || '18:00'} className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-foreground focus:ring-1 focus:ring-primary outline-none" />
+                <input name="ot_start_time" type="time" required defaultValue={(editingOtLog?.start_time as string) || '18:00'} className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-foreground focus:ring-1 focus:ring-primary outline-none" />
              </div>
              <div>
                 <label className="block text-sm font-medium text-muted-foreground mb-1.5">Finish Hour *</label>
-                <input name="ot_end_time" type="time" required defaultValue={editingOtLog?.ot_end_time || '20:00'} className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-foreground focus:ring-1 focus:ring-primary outline-none" />
+                <input name="ot_end_time" type="time" required defaultValue={(editingOtLog?.end_time as string) || '20:00'} className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-foreground focus:ring-1 focus:ring-primary outline-none" />
              </div>
           </div>
           <div>
             <label className="block text-sm font-medium text-muted-foreground mb-1.5">Reason / Details *</label>
-            <textarea name="reason" rows={2} required defaultValue={editingOtLog?.overtime_desc || ''} className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-foreground focus:ring-1 focus:ring-primary outline-none" placeholder="Reason for overtime..."></textarea>
+            <textarea name="reason" rows={2} required defaultValue={(editingOtLog?.reason as string) || ''} className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-foreground focus:ring-1 focus:ring-primary outline-none" placeholder="Reason for overtime..."></textarea>
           </div>
           <div className="pt-4 flex justify-end gap-3 border-t border-border mt-6">
             <button type="button" onClick={() => setIsOtModalOpen(false)} className="px-4 py-2 border border-border rounded-lg text-sm font-medium text-foreground hover:bg-surface">Cancel</button>
@@ -1164,13 +1303,29 @@ export default function AttendancePage() {
       <Modal isOpen={!!deleteOtLog} onClose={() => setDeleteOtLog(null)} title="Remove Overtime">
         <div className="space-y-4">
           <div className="text-sm text-foreground my-2">
-            Are you sure you want to remove the overtime record for <strong className="text-primary">{deleteOtLog?.member_name}</strong> on <span className="font-semibold">{deleteOtLog?.date ? format(new Date(deleteOtLog.date), 'dd MMM yyyy') : ''}</span>?
+            Are you sure you want to remove the overtime record for <strong className="text-primary">{deleteOtLog?.member_name}</strong> on <span className="font-semibold">{deleteOtLog?.request_date ? format(new Date(deleteOtLog.request_date as string), 'dd MMM yyyy') : ''}</span>?
           </div>
           <div className="flex justify-end gap-3 pt-5 border-t border-border">
             <button onClick={() => setDeleteOtLog(null)} className="px-4 py-2 border border-border rounded-lg text-sm font-medium text-foreground hover:bg-surface transition-colors">Cancel</button>
             <button onClick={confirmRemoveOT} className="px-4 py-2 bg-destructive hover:bg-destructive/90 text-white rounded-lg text-sm font-medium shadow-sm transition-colors">Remove Record</button>
           </div>
         </div>
+      </Modal>
+
+      <Modal isOpen={!!declineOtId} onClose={() => setDeclineOtId(null)} title="Decline Overtime Request">
+        <form onSubmit={handleOTDecline} className="space-y-4">
+          <p className="text-sm text-muted-foreground my-2">
+            Please provide a reason for declining this overtime request.
+          </p>
+          <div>
+            <label className="block text-sm font-medium text-muted-foreground mb-1.5">Decline Reason *</label>
+            <textarea name="reason" rows={3} required className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-foreground focus:ring-1 focus:ring-primary outline-none" placeholder="Elaborate on why this is declined..."></textarea>
+          </div>
+          <div className="flex justify-end gap-3 pt-5 border-t border-border mt-4">
+            <button type="button" onClick={() => setDeclineOtId(null)} className="px-4 py-2 border border-border rounded-lg text-sm font-medium text-foreground hover:bg-surface transition-colors">Cancel</button>
+            <button type="submit" className="px-4 py-2 bg-destructive hover:bg-destructive/90 text-white rounded-lg text-sm font-medium shadow-sm transition-colors">Confirm Decline</button>
+          </div>
+        </form>
       </Modal>
 
     </div>
