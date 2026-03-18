@@ -13,7 +13,7 @@ export async function GET() {
       FROM (
         SELECT assignee AS person FROM tasks WHERE status = 'Done'
         UNION ALL
-        SELECT reporter AS person FROM tickets WHERE status IN ('Resolved', 'Closed')
+        SELECT reporter AS person FROM tickets WHERE status = 'Done'
       ) t
       WHERE person != '' AND person NOT LIKE '%,%'
       GROUP BY person
@@ -26,13 +26,13 @@ export async function GET() {
 
     // 2. Heatmap: Activity count per day (Last 30 days)
     const [heatmapDailyRaw] = await db.query(`
-      SELECT DATE(updated_at) AS log_date, 'Task' AS type, title
+      SELECT DATE_FORMAT(updated_at, '%Y-%m-%d') AS log_date, 'Task' AS type, title
       FROM tasks
       WHERE status = 'Done' AND updated_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
       UNION ALL
-      SELECT DATE(updated_at) AS log_date, 'Ticket' AS type, title
+      SELECT DATE_FORMAT(updated_at, '%Y-%m-%d') AS log_date, 'Ticket' AS type, title
       FROM tickets
-      WHERE status IN ('Resolved', 'Closed') AND updated_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
+      WHERE status = 'Done' AND updated_at >= DATE_SUB(NOW(), INTERVAL 30 DAY)
     `) as any;
 
     const heatmapMap = new Map<string, { count: number; items: string[] }>();
