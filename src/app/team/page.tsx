@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { Plus, Search, Edit2, Trash2, Eye, EyeOff, Shield, ExternalLink } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, Eye, EyeOff, Shield, ExternalLink, Crown, Building2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DataTable } from '@/components/DataTable';
 import { Modal, ConfirmDialog } from '@/components/Modal';
@@ -35,17 +35,27 @@ export default function TeamPage() {
   }, []);
   const roleNames = positions.map(p => p.name);
 
+  const itMembers = members.filter(m => m.member_type !== 'Management');
+  const managementMembers = members.filter(m => m.member_type === 'Management');
   const allMembers: Member[] = members;
 
   const [search, setSearch] = useState('');
   const [filterRole, setFilterRole] = useState('All');
+
+  // IT Member modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingMember, setEditingMember] = useState<Member | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Member | null>(null);
   const [viewingMember, setViewingMember] = useState<Member | null>(null);
   const [showPw, setShowPw] = useState(false);
-  // Pending photo_url while editing (not yet saved)
   const [pendingPhoto, setPendingPhoto] = useState<string | null>(null);
+
+  // Management modal state
+  const [isMgmtModalOpen, setIsMgmtModalOpen] = useState(false);
+  const [editingMgmt, setEditingMgmt] = useState<Member | null>(null);
+  const [deleteMgmtTarget, setDeleteMgmtTarget] = useState<Member | null>(null);
+  const [showMgmtPw, setShowMgmtPw] = useState(false);
+  const [pendingMgmtPhoto, setPendingMgmtPhoto] = useState<string | null>(null);
 
   const getDescriptionsList = (descStr?: string): { id: number, text: string }[] => {
     if (!descStr) return [];
@@ -73,7 +83,7 @@ export default function TeamPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allMembers]);
 
-  const filtered = allMembers.filter(m => {
+  const filtered = itMembers.filter(m => {
     const q = search.toLowerCase();
     return (m.name.toLowerCase().includes(q) || m.badge.includes(q)) &&
            (filterRole === 'All' || m.role === filterRole);
@@ -85,12 +95,24 @@ export default function TeamPage() {
   const openEditModal = (m: Member) => {
     setEditingMember(m); setPendingPhoto(null); setShowPw(false); setIsModalOpen(true);
   };
+  const openAddMgmtModal = () => {
+    setEditingMgmt(null); setPendingMgmtPhoto(null); setShowMgmtPw(false); setIsMgmtModalOpen(true);
+  };
+  const openEditMgmtModal = (m: Member) => {
+    setEditingMgmt(m); setPendingMgmtPhoto(null); setShowMgmtPw(false); setIsMgmtModalOpen(true);
+  };
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
     await deleteMember(deleteTarget.id);
     toast.success(`"${deleteTarget.name}" removed`);
     setDeleteTarget(null);
+  };
+  const handleDeleteMgmt = async () => {
+    if (!deleteMgmtTarget) return;
+    await deleteMember(deleteMgmtTarget.id);
+    toast.success(`"${deleteMgmtTarget.name}" removed from Management`);
+    setDeleteMgmtTarget(null);
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -109,11 +131,11 @@ export default function TeamPage() {
       grade: fd.get('grade') as string || '',
       created_at: (fd.get('joinDate') as string) || editingMember?.created_at || new Date().toISOString(),
       photo_url: pendingPhoto ?? editingMember?.photo_url ?? undefined,
+      member_type: 'IT',
     };
     if (!data.name || !data.badge) { toast.error('Name and Badge required'); return; }
     const dup = allMembers.find(m => m.badge === data.badge && m.id !== editingMember?.id);
     if (dup) { toast.error('Badge already registered'); return; }
-
     try {
       if (editingMember) {
         await updateMember({ ...editingMember, ...data });
@@ -124,6 +146,41 @@ export default function TeamPage() {
         toast.success(`"${data.name}" registered`);
       }
       setIsModalOpen(false);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to save');
+    }
+  };
+
+  const handleSaveMgmt = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const fd = new FormData(e.target as HTMLFormElement);
+    const pw = fd.get('password') as string;
+    const data: Omit<Member, 'id'> = {
+      name: (fd.get('name') as string).trim(),
+      badge: (fd.get('badge') as string).trim(),
+      password: pw || editingMgmt?.password || '',
+      role: (fd.get('title') as string).trim(),
+      division: 'Management',
+      status: 'Active',
+      email: (fd.get('email') as string || '').trim(),
+      phone: (fd.get('phone') as string || '').trim(),
+      grade: '',
+      photo_url: pendingMgmtPhoto ?? editingMgmt?.photo_url ?? undefined,
+      member_type: 'Management',
+    };
+    if (!data.name || !data.badge) { toast.error('Name and Badge required'); return; }
+    const dup = allMembers.find(m => m.badge === data.badge && m.id !== editingMgmt?.id);
+    if (dup) { toast.error('Badge already registered'); return; }
+    try {
+      if (editingMgmt) {
+        await updateMember({ ...editingMgmt, ...data });
+        toast.success(`"${data.name}" updated`);
+      } else {
+        if (!pw) { toast.error('Password required'); return; }
+        await addMember(data);
+        toast.success(`"${data.name}" added to Management`);
+      }
+      setIsMgmtModalOpen(false);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to save');
     }
@@ -182,9 +239,16 @@ export default function TeamPage() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Team Management</h1>
-          <p className="text-muted-foreground mt-1">IT Department members — {allMembers.length} total</p>
+          <p className="text-muted-foreground mt-1">
+            IT Team — <span className="font-semibold text-foreground">{itMembers.length}</span> members
+            {managementMembers.length > 0 && <> · Management — <span className="font-semibold text-amber-400">{managementMembers.length}</span></>}
+          </p>
         </div>
         <div className="flex items-center gap-2">
+          <button onClick={openAddMgmtModal}
+            className="flex items-center gap-2 border border-amber-500/40 hover:border-amber-500/80 text-amber-400 hover:text-amber-300 hover:bg-amber-500/10 px-4 py-2.5 rounded-xl font-medium text-sm transition-all">
+            <Crown className="w-4 h-4" /> Add Management
+          </button>
           <button onClick={openAddModal}
             className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-white px-4 py-2.5 rounded-xl font-medium text-sm transition-all shadow-sm">
             <Plus className="w-4 h-4" /> Add Member
@@ -192,7 +256,72 @@ export default function TeamPage() {
         </div>
       </div>
 
-      {/* Search & Filter */}
+      {/* Management Section */}
+      {managementMembers.length > 0 && (
+        <div className="rounded-2xl border p-5" style={{ background: 'var(--surface)', borderColor: 'rgba(245,158,11,0.25)' }}>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-amber-500/15 flex items-center justify-center border border-amber-500/25">
+                <Crown className="w-4 h-4 text-amber-400" />
+              </div>
+              <div>
+                <h2 className="text-sm font-bold text-foreground">Management</h2>
+                <p className="text-[10px] text-muted-foreground">Full access · Approval authority</p>
+              </div>
+            </div>
+            <span className="text-[10px] text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full font-semibold">
+              {managementMembers.length} manager{managementMembers.length !== 1 ? 's' : ''}
+            </span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+            {managementMembers.map(m => (
+              <motion.div
+                key={m.id}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="relative rounded-xl border p-4 flex flex-col items-center gap-3 group hover:border-amber-500/50 transition-all"
+                style={{ background: 'linear-gradient(135deg, rgba(245,158,11,0.05), transparent)', borderColor: 'rgba(245,158,11,0.2)' }}
+              >
+                {/* Actions */}
+                <div className="absolute top-3 right-3 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button onClick={() => openEditMgmtModal(m)} className="p-1.5 rounded-lg hover:bg-amber-500/15 text-muted-foreground hover:text-amber-400 transition-colors"><Edit2 className="w-3.5 h-3.5" /></button>
+                  <button onClick={() => setDeleteMgmtTarget(m)} className="p-1.5 rounded-lg hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
+                </div>
+                {/* Avatar */}
+                <div className="relative">
+                  <PhotoAvatar name={m.name} photoUrl={m.photo_url} size="lg" canUpload={false} />
+                  <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-amber-500 flex items-center justify-center border-2 border-surface">
+                    <Crown className="w-2.5 h-2.5 text-white" />
+                  </div>
+                </div>
+                {/* Info */}
+                <div className="text-center">
+                  <p className="font-bold text-sm text-foreground">{m.name}</p>
+                  <p className="text-xs text-amber-400 font-semibold mt-0.5">{m.role}</p>
+                  <div className="flex items-center justify-center gap-1 mt-1">
+                    <Building2 className="w-3 h-3 text-muted-foreground" />
+                    <span className="text-[10px] text-muted-foreground">{m.division}</span>
+                  </div>
+                </div>
+                {/* Contact */}
+                <div className="w-full space-y-1 border-t pt-3" style={{ borderColor: 'rgba(245,158,11,0.15)' }}>
+                  {m.email && <p className="text-[10px] text-muted-foreground truncate text-center">{m.email}</p>}
+                  {m.phone && <p className="text-[10px] text-muted-foreground text-center">{m.phone}</p>}
+                  <p className="text-[9px] text-amber-400/60 text-center font-mono">#{m.badge}</p>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Search & Filter — IT Team */}
+      <div>
+        <div className="flex items-center gap-2 mb-3">
+          <Shield className="w-4 h-4 text-primary" />
+          <h2 className="text-sm font-bold text-foreground">IT Team</h2>
+          <span className="text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full">{itMembers.length} members</span>
+        </div>
       <div className="rounded-2xl p-4 flex flex-col sm:flex-row gap-4 border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -204,6 +333,7 @@ export default function TeamPage() {
           <option value="All">All Roles</option>
           {roleNames.map(r => <option key={r}>{r}</option>)}
         </select>
+      </div>
       </div>
 
       <DataTable columns={columns} data={filtered} keyExtractor={m => m.id} onRowClick={m => setViewingMember(m)} />
@@ -403,6 +533,74 @@ export default function TeamPage() {
 
       <ConfirmDialog isOpen={!!deleteTarget} onClose={() => setDeleteTarget(null)} onConfirm={handleDelete}
         title="Remove Member" message={`Remove "${deleteTarget?.name}" (${deleteTarget?.badge})? They will lose login access.`} />
+
+      {/* ── Management Add/Edit Modal ── */}
+      <Modal isOpen={isMgmtModalOpen} onClose={() => setIsMgmtModalOpen(false)}
+        title={editingMgmt ? 'Edit Management Member' : 'Add Management Member'}
+        maxWidth="max-w-md">
+        <form onSubmit={handleSaveMgmt} className="space-y-4">
+          {/* Photo */}
+          <div className="flex flex-col items-center gap-2 pb-2">
+            <PhotoAvatar
+              name={editingMgmt?.name || 'M'}
+              photoUrl={pendingMgmtPhoto ?? editingMgmt?.photo_url}
+              size="xl"
+              canUpload
+              onUploaded={url => setPendingMgmtPhoto(url)}
+            />
+            <p className="text-[10px] text-muted-foreground">Click avatar to upload photo</p>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="col-span-2">
+              <label className="block text-sm font-medium text-muted-foreground mb-1.5">Full Name <span className="text-destructive">*</span></label>
+              <input name="name" required defaultValue={editingMgmt?.name} placeholder="e.g. Budi Santoso" className={inputClass} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-muted-foreground mb-1.5">Employee ID / Badge <span className="text-destructive">*</span></label>
+              <input name="badge" required defaultValue={editingMgmt?.badge} placeholder="e.g. 50001" className={inputClass} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-muted-foreground mb-1.5">Title / Position <span className="text-destructive">*</span></label>
+              <input name="title" required defaultValue={editingMgmt?.role} placeholder="Manager / GM / Director" className={inputClass} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-muted-foreground mb-1.5">Email</label>
+              <input name="email" type="email" defaultValue={editingMgmt?.email} placeholder="email@giken.co.id" className={inputClass} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-muted-foreground mb-1.5">Phone</label>
+              <input name="phone" defaultValue={editingMgmt?.phone} placeholder="08xx-xxxx-xxxx" className={inputClass} />
+            </div>
+            <div className="col-span-2">
+              <label className="block text-sm font-medium text-muted-foreground mb-1.5">
+                {editingMgmt ? 'New Password (leave blank to keep)' : 'Password'} {!editingMgmt && <span className="text-destructive">*</span>}
+              </label>
+              <div className="relative">
+                <input name="password" type={showMgmtPw ? 'text' : 'password'} placeholder="Min 6 characters" className={inputClass + ' pr-10'} />
+                <button type="button" onClick={() => setShowMgmtPw(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                  {showMgmtPw ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+          </div>
+          {/* Management badge */}
+          <div className="flex items-center gap-2 p-3 rounded-xl border bg-amber-500/5 border-amber-500/20">
+            <Crown className="w-4 h-4 text-amber-400 flex-shrink-0" />
+            <p className="text-xs text-amber-400/80">Management members have full read/write access to all menus and are separate from the IT Team count.</p>
+          </div>
+          <div className="pt-2 flex justify-end gap-3 border-t" style={{ borderColor: 'var(--border)' }}>
+            <button type="button" onClick={() => setIsMgmtModalOpen(false)}
+              className="px-4 py-2 rounded-xl text-sm font-medium text-foreground border hover:bg-primary/5 transition-colors" style={{ borderColor: 'var(--border)' }}>Cancel</button>
+            <button type="submit"
+              className="px-4 py-2 bg-amber-500 hover:bg-amber-500/90 text-white rounded-xl text-sm font-medium transition-colors">
+              {editingMgmt ? 'Save Changes' : 'Add to Management'}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      <ConfirmDialog isOpen={!!deleteMgmtTarget} onClose={() => setDeleteMgmtTarget(null)} onConfirm={handleDeleteMgmt}
+        title="Remove Management Member" message={`Remove "${deleteMgmtTarget?.name}" from Management? They will lose login access.`} />
 
       {/* Suppress unused AnimatePresence warning */}
       <AnimatePresence />

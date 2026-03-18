@@ -19,6 +19,7 @@ export interface Member {
   contract_duration?: number;
   created_at?: string;
   photo_url?: string;
+  member_type?: 'IT' | 'Management';
 }
 
 export interface AuditLog {
@@ -33,6 +34,7 @@ export interface AuditLog {
 interface AuthContextType {
   currentUser: Member | null;
   isMaster: boolean;
+  isManagement: boolean;
   members: Member[];
   login: (badge: string, password: string) => Promise<boolean>;
   logout: () => void;
@@ -173,6 +175,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     <AuthContext.Provider value={{
       currentUser,
       isMaster: false,
+      isManagement: currentUser?.member_type === 'Management',
       members,
       login, logout, addMember, updateMember, deleteMember, refreshMembers,
       auditLogs, addAuditLog,

@@ -36,15 +36,16 @@ export async function POST(req: NextRequest) {
     if (existRows[0]) return NextResponse.json({ error: 'Badge already exists' }, { status: 400 });
 
     const [result] = await db.execute(
-      'INSERT INTO members (name, badge, role, division, email, phone, password, status, grade, join_date, finish_date, employment_status, contract_duration, created_at, photo_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO members (name, badge, role, division, email, phone, password, status, grade, join_date, finish_date, employment_status, contract_duration, created_at, photo_url, member_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [body.name, body.badge, body.role || 'IT Support', body.division || 'IT Department',
        body.email || '', body.phone || '', body.password || 'Password123', body.status || 'Active',
        body.grade || '', body.join_date || '', body.finish_date || '', body.employment_status || 'Permanent',
-       body.contract_duration || 0, toMysqlDatetime(body.created_at), body.photo_url || null]
+       body.contract_duration || 0, toMysqlDatetime(body.created_at), body.photo_url || null,
+       body.member_type || 'IT']
     ) as any;
     await db.execute(
       'INSERT INTO audit_logs (action, module, details, user_name) VALUES (?, ?, ?, ?)',
-      ['Created', 'Team', `Added member: ${body.name}`, body.userName || 'System']
+      ['Created', 'Team', `Added member: ${body.name} (${body.member_type || 'IT'})`, body.userName || 'System']
     );
     return NextResponse.json({ id: result.insertId });
   } catch {
@@ -83,11 +84,11 @@ export async function PUT(req: NextRequest) {
     }
 
     await db.execute(
-      'UPDATE members SET name=?, badge=?, role=?, division=?, email=?, phone=?, password=?, status=?, grade=?, join_date=?, finish_date=?, employment_status=?, contract_duration=?, created_at=?, photo_url=? WHERE id=?',
+      'UPDATE members SET name=?, badge=?, role=?, division=?, email=?, phone=?, password=?, status=?, grade=?, join_date=?, finish_date=?, employment_status=?, contract_duration=?, created_at=?, photo_url=?, member_type=? WHERE id=?',
       [body.name, body.badge, body.role, body.division, body.email || '', body.phone || '',
        body.password || 'Password123', body.status || 'Active', body.grade || '', body.join_date || '',
        body.finish_date || '', body.employment_status || 'Permanent', body.contract_duration || 0,
-       toMysqlDatetime(body.created_at), body.photo_url ?? null, body.id]
+       toMysqlDatetime(body.created_at), body.photo_url ?? null, body.member_type || 'IT', body.id]
     );
     await db.execute(
       'INSERT INTO audit_logs (action, module, details, user_name) VALUES (?, ?, ?, ?)',
