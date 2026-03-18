@@ -366,7 +366,7 @@ export default function AttendancePage() {
     endOfCutoff.setHours(23, 59, 59, 999);
     
     // Filter members and compute their OT within this interval
-    const stats = members.filter(m => m.status === 'Active' && m.name.toLowerCase().includes(otSearch.toLowerCase())).map(m => {
+    const stats = members.filter(m => m.status === 'Active' && m.name.toLowerCase().includes(otSearch.toLowerCase()) && (isManager || m.name === currentUser?.name)).map(m => {
       let periodOt = 0;
       let periodOtHidup = 0;
       let ytdOt = 0;

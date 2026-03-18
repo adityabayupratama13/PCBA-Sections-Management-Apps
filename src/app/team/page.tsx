@@ -231,7 +231,7 @@ export default function TeamPage() {
         <div className="flex items-center gap-3" onClick={e => e.stopPropagation()}>
           {(canEdit || canEditOwnProfile(currentUser, m.id)) && (
             <button onClick={() => openEditModal(m)} className="text-muted-foreground hover:text-primary transition-colors" title={canEditOwnProfile(currentUser, m.id) && !canEdit ? 'Edit My Profile' : 'Edit'}>
-              {canEditOwnProfile(currentUser, m.id) && !canEdit ? <UserCircle className="w-4 h-4" /> : <Edit2 className="w-4 h-4" />}
+              <Edit2 className="w-4 h-4" />
             </button>
           )}
           {canEdit && (
@@ -312,7 +312,7 @@ export default function TeamPage() {
                 <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                   {(canEdit || canEditOwnProfile(currentUser, m.id)) && (
                     <button onClick={() => openEditMgmtModal(m)} className="text-muted-foreground hover:text-amber-400 transition-colors" title={canEditOwnProfile(currentUser, m.id) && !canEdit ? 'Edit My Profile' : 'Edit'}>
-                      {canEditOwnProfile(currentUser, m.id) && !canEdit ? <UserCircle className="w-4 h-4" /> : <Edit2 className="w-4 h-4" />}
+                      <Edit2 className="w-4 h-4" />
                     </button>
                   )}
                   {canEdit && (
@@ -469,7 +469,7 @@ export default function TeamPage() {
                 name={editingMember?.name || 'N'}
                 photoUrl={pendingPhoto ?? editingMember?.photo_url}
                 size="lg"
-                canUpload
+                canUpload={(canEdit || !!(editingMember && currentUser && canEditOwnProfile(currentUser, editingMember.id))) ? true : undefined}
                 onUploaded={url => setPendingPhoto(url)}
               />
               <span className="text-xs text-muted-foreground">Click or drag to set photo</span>
@@ -557,7 +557,7 @@ export default function TeamPage() {
               name={editingMgmt?.name || 'M'}
               photoUrl={pendingMgmtPhoto ?? editingMgmt?.photo_url}
               size="xl"
-              canUpload
+              canUpload={(canEdit || !!(editingMgmt && currentUser && canEditOwnProfile(currentUser, editingMgmt.id))) ? true : undefined}
               onUploaded={url => setPendingMgmtPhoto(url)}
             />
             <p className="text-[10px] text-muted-foreground">Click avatar to upload photo</p>

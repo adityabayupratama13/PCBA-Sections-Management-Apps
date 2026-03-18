@@ -164,7 +164,7 @@ export default function PositionsPage() {
         </select>
       </div>
 
-      <DataTable columns={columns} data={filtered} keyExtractor={p => p.id} onRowClick={(p) => setManagingDesc(p)} isLoading={loading} />
+      <DataTable columns={columns} data={filtered} keyExtractor={p => p.id} onRowClick={(p) => canEdit ? setManagingDesc(p) : undefined} isLoading={loading} />
 
       {/* Info */}
       <div className="flex items-center gap-3 p-3 rounded-xl border border-border text-sm" style={{ background: 'var(--surface)' }}>
