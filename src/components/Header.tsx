@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { Search, Bell, Menu, Sun, Moon, LogOut, CheckCheck, PlayCircle } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from 'next-themes';
+import PhotoAvatar from '@/components/PhotoAvatar';
 
 interface HeaderProps {
   className?: string;
@@ -172,9 +173,12 @@ export function Header({ className = '', onMenuClick }: HeaderProps) {
               {currentUser?.badge && <code className="font-mono text-[10px] opacity-60">#{currentUser.badge}</code>}
             </div>
           </div>
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white font-bold text-sm">
-            {currentUser?.name.charAt(0).toUpperCase() || '?'}
-          </div>
+          <PhotoAvatar
+            name={currentUser?.name || '?'}
+            photoUrl={currentUser?.photo_url}
+            size="sm"
+            canUpload={false}
+          />
           <button
             onClick={() => { logout(); window.location.href = '/login'; }}
             className="p-2 rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/8 transition-all"

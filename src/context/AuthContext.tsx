@@ -65,7 +65,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const fetchMembers = async () => {
     try {
       const res = await fetch('/api/members');
-      if (res.ok) { setMembers(await res.json()); }
+      if (res.ok) {
+        const data: Member[] = await res.json();
+        setMembers(data);
+        // Sync currentUser with fresh MySQL data (picks up photo_url etc.)
+        setCurrentUser(prev => {
+          if (!prev) return prev;
+          const fresh = data.find(m => m.id === prev.id);
+          if (fresh) {
+            localStorage.setItem('it-mgt-user', JSON.stringify(fresh));
+            return fresh;
+          }
+          return prev;
+        });
+      }
     } catch { /* silent */ }
   };
 

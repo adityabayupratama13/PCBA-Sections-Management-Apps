@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { GikenLogo } from '@/components/GikenLogo';
 import { useEffect, useRef } from 'react';
 import anime from 'animejs';
+import PhotoAvatar from '@/components/PhotoAvatar';
 
 const NAV_ITEMS = [
   { label: 'Dashboard', href: '/', icon: LayoutDashboard },
@@ -34,7 +35,7 @@ interface SidebarProps {
 
 export function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
   const pathname = usePathname();
-  const { role } = useAuth();
+  const { role, currentUser } = useAuth();
   const navRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
@@ -140,11 +141,14 @@ export function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
       {/* Footer */}
       <div className="p-3 border-t flex-shrink-0" style={{ borderColor: 'var(--sidebar-border)' }}>
         <div className="flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-surface cursor-default transition-colors">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary/30 to-secondary/30 flex items-center justify-center text-primary font-bold text-sm border border-primary/20 flex-shrink-0">
-            A
-          </div>
+          <PhotoAvatar
+            name={currentUser?.name || 'User'}
+            photoUrl={currentUser?.photo_url}
+            size="sm"
+            canUpload={false}
+          />
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-foreground truncate">My Account</p>
+            <p className="text-sm font-semibold text-foreground truncate">{currentUser?.name || 'My Account'}</p>
             <div className="flex items-center gap-1.5 mt-0.5">
               <div className="w-1.5 h-1.5 rounded-full bg-success status-online" />
               <p className="text-xs text-muted-foreground truncate">{role || 'Guest'}</p>
