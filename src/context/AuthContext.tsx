@@ -68,19 +68,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (res.ok) {
         const data: Member[] = await res.json();
         setMembers(data);
-        // Sync currentUser with fresh MySQL data (picks up photo_url etc.)
-        setCurrentUser(prev => {
-          if (!prev) return prev;
-          const fresh = data.find(m => m.id === prev.id);
-          if (fresh) {
-            localStorage.setItem('it-mgt-user', JSON.stringify(fresh));
-            return fresh;
-          }
-          return prev;
-        });
       }
     } catch { /* silent */ }
   };
+
+  // Sync currentUser with fresh MySQL data whenever members list updates
+  // This ensures photo_url and other fields are always current
+  useEffect(() => {
+    if (members.length === 0) return;
+    setCurrentUser(prev => {
+      if (!prev) return prev;
+      const fresh = members.find(m => m.id === prev.id);
+      if (!fresh) return prev;
+      // Only update if data actually changed
+      if (JSON.stringify(fresh) === JSON.stringify(prev)) return prev;
+      localStorage.setItem('it-mgt-user', JSON.stringify(fresh));
+      return fresh;
+    });
+  }, [members]);
 
   const fetchAuditLogs = async () => {
     try {

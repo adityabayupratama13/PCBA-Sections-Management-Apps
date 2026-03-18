@@ -35,7 +35,8 @@ interface SidebarProps {
 
 export function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
   const pathname = usePathname();
-  const { role, currentUser } = useAuth();
+  const { role, currentUser, members } = useAuth();
+  const currentMemberPhoto = members.find(m => m.id === currentUser?.id)?.photo_url;
   const navRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
@@ -143,7 +144,7 @@ export function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
         <div className="flex items-center gap-3 px-2 py-2 rounded-xl hover:bg-surface cursor-default transition-colors">
           <PhotoAvatar
             name={currentUser?.name || 'User'}
-            photoUrl={currentUser?.photo_url}
+            photoUrl={currentMemberPhoto}
             size="sm"
             canUpload={false}
           />

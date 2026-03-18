@@ -12,7 +12,8 @@ interface HeaderProps {
 
 export function Header({ className = '', onMenuClick }: HeaderProps) {
   const [showNotifications, setShowNotifications] = useState(false);
-  const { currentUser, logout, auditLogs } = useAuth();
+  const { currentUser, logout, auditLogs, members } = useAuth();
+  const currentMemberPhoto = members.find(m => m.id === currentUser?.id)?.photo_url;
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [lastViewed, setLastViewed] = useState<number>(0);
@@ -175,7 +176,7 @@ export function Header({ className = '', onMenuClick }: HeaderProps) {
           </div>
           <PhotoAvatar
             name={currentUser?.name || '?'}
-            photoUrl={currentUser?.photo_url}
+            photoUrl={currentMemberPhoto}
             size="sm"
             canUpload={false}
           />
