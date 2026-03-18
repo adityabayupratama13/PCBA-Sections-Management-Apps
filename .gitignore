@@ -45,7 +45,10 @@ data/
 mysql_backup/
 giken_db_dump.sql
 
-# One-off migration/fix scripts
+# User-uploaded files (persisted via Docker volume mount, not needed in git)
+public/uploads/
+
+# One-off migration/fix/debug scripts
 migrate.js
 generate-dump.js
 fix*.js
@@ -53,6 +56,8 @@ patch*.js
 refactor*.js
 dump*.js
 diag*.js
+chk*.js
+test*.js
 cmsg.txt
 commit_msg.txt
 dns-test.js
