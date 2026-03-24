@@ -58,9 +58,9 @@ export async function POST(req: NextRequest) {
   const body = await req.json();
   const db = getDb();
   try {
-    const [countRows] = await db.query('SELECT COUNT(*) AS c FROM tickets') as any;
-    const count = (countRows[0] as { c: number }).c;
-    const id = body.id || `TKT-${String(count + 100).padStart(3, '0')}`;
+    const [maxRows] = await db.query("SELECT MAX(CAST(SUBSTRING(id, 5) AS UNSIGNED)) AS m FROM tickets") as any;
+    const maxNum = (maxRows[0] as { m: number | null }).m ?? 99;
+    const id = body.id || `TKT-${String(maxNum + 1).padStart(3, '0')}`;
 
     await db.execute(
       'INSERT INTO tickets (id, title, reporter, priority, status, created_date, resolution, attachments, comments, linked_article) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',

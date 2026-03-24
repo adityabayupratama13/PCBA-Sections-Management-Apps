@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { driver } from 'driver.js';
-import 'driver.js/dist/driver.css';
 
 export function OnboardingTour() {
   const [mounted, setMounted] = useState(false);
