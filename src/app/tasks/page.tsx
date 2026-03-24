@@ -41,8 +41,9 @@ export default function TasksPage() {
   const [search, setSearch] = useState('');
   const [filterAssignee, setFilterAssignee] = useState('All');
   const [filterPriority, setFilterPriority] = useState('All');
-  const [filterDate, setFilterDate] = useState('');
-  
+  const defaultStr = new Date().toISOString().split('T')[0];
+  const [startDate, setStartDate] = useState<string>(defaultStr);
+  const [endDate, setEndDate] = useState<string>(defaultStr);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Task | null>(null);
@@ -68,16 +69,7 @@ export default function TasksPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tasks]);
 
-  const navigateDate = (days: number) => {
-    if (!filterDate) {
-      const today = new Date();
-      setFilterDate(today.toISOString().split('T')[0]);
-      return;
-    }
-    const d = new Date(filterDate);
-    d.setUTCDate(d.getUTCDate() + days);
-    setFilterDate(d.toISOString().split('T')[0]);
-  };
+
 
   const exportPDF = () => {
     const doc = new jsPDF();
@@ -268,27 +260,32 @@ export default function TasksPage() {
         <label className="text-sm font-medium text-foreground whitespace-nowrap">Time Filter :</label>
 
         <button 
-          onClick={() => setFilterDate('')} 
-          className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${!filterDate ? 'bg-primary text-primary-foreground shadow-sm' : 'bg-transparent text-muted-foreground hover:bg-secondary'}`}
+          onClick={() => { setStartDate(''); setEndDate(''); }} 
+          className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${!startDate && !endDate ? 'bg-primary text-primary-foreground shadow-sm' : 'bg-transparent text-muted-foreground hover:bg-secondary'}`}
         >
           All Data
         </button>
 
         <div className="h-4 w-px bg-border mx-1" />
 
-        <div className="flex items-center gap-1">
-          <button onClick={() => navigateDate(-1)} className="p-1 hover:bg-secondary rounded text-muted-foreground transition-colors"><ChevronLeft className="w-4 h-4" /></button>
+        <div className="flex items-center gap-2">
           <input 
             type="date" 
-            value={filterDate} 
-            onChange={e => setFilterDate(e.target.value)} 
-            className={`bg-background border border-border rounded-md px-2 py-1 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary transition-all ${filterDate ? 'ring-1 ring-primary border-primary' : ''}`}
+            value={startDate} 
+            onChange={e => setStartDate(e.target.value)} 
+            className={`bg-background border border-border rounded-md px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary transition-all ${startDate && endDate ? 'ring-1 ring-primary border-primary' : ''}`}
           />
-          <button onClick={() => navigateDate(1)} className="p-1 hover:bg-secondary rounded text-muted-foreground transition-colors"><ChevronRight className="w-4 h-4" /></button>
+          <span className="text-muted-foreground">-</span>
+          <input 
+            type="date" 
+            value={endDate} 
+            onChange={e => setEndDate(e.target.value)} 
+            className={`bg-background border border-border rounded-md px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary transition-all ${startDate && endDate ? 'ring-1 ring-primary border-primary' : ''}`}
+          />
         </div>
         
-        <p className="text-xs text-muted-foreground ml-auto hidden sm:block">
-          {filterDate ? "Showing tasks active/due on this particular date." : "Showing all tasks across all dates."}
+        <p className="text-xs text-muted-foreground ml-auto hidden md:block">
+          {startDate && endDate ? "Showing tasks active or due in this date range." : "Showing all tasks across all dates."}
         </p>
       </div>
 
@@ -310,10 +307,10 @@ export default function TasksPage() {
         {COLUMNS.map(col => {
           let colTasks = filteredTasks.filter(t => t.status === col);
           
-          if (filterDate) {
+          if (startDate && endDate) {
             colTasks = colTasks.filter(t => {
-              if (t.status === 'Done') return t.due_date === filterDate;
-              return !t.due_date || t.due_date <= filterDate;
+              if (t.status === 'Done') return t.due_date >= startDate && t.due_date <= endDate;
+              return !t.due_date || (t.due_date >= startDate && t.due_date <= endDate) || (t.due_date < startDate);
             });
           }
 

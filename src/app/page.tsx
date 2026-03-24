@@ -16,7 +16,9 @@ interface MemberItem { name: string; role: string; status: string; }
 export default function DashboardPage() {
   const { auditLogs, currentUser } = useAuth();
   const [stats, setStats] = useState<Stats>({ members: 0, tickets: { total: 0, open: 0, inProgress: 0, resolved: 0 }, tasks: { total: 0, backlog: 0, inProgress: 0, review: 0, done: 0 }, logs: 0, positions: 0 });
-  const [timeFilter, setTimeFilter] = useState<string>('Today');
+  const defaultStr = new Date().toISOString().split('T')[0];
+  const [startDate, setStartDate] = useState<string>(defaultStr);
+  const [endDate, setEndDate] = useState<string>(defaultStr);
   const [rawData, setRawData] = useState<{ tickets: any[], tasks: any[], logs: any[], members: any[], positions: any[] }>({ tickets: [], tasks: [], logs: [], members: [], positions: [] });
   const [recentLogs, setRecentLogs] = useState<AuditLog[]>([]);
   const [workloads, setWorkloads] = useState<{ name: string; tasks: number }[]>([]);
@@ -26,7 +28,7 @@ export default function DashboardPage() {
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Layout State
-  const defaultLayout = ['stats', 'activity', 'charts', 'workload', 'heatmap', 'activityWorkflow'];
+  const defaultLayout = ['stats', 'charts', 'workload', 'heatmap', 'activityWorkflow'];
   const [layout, setLayout] = useState<string[]>(defaultLayout);
   const [isEditingLayout, setIsEditingLayout] = useState(false);
   const [draggedItem, setDraggedItem] = useState<string | null>(null);
@@ -51,15 +53,6 @@ export default function DashboardPage() {
       setTeamMembers(itMembersObj.slice(0, 8));
       if (analyticsResult && analyticsResult.heatmap) setHeatmap(analyticsResult.heatmap);
 
-      // Workload: count tasks per assignee
-      const wMap: Record<string, number> = {};
-      (tk as TaskItem[]).forEach(task => {
-        task.assignee.split(', ').forEach(a => {
-          if (a) wMap[a] = (wMap[a] || 0) + 1;
-        });
-      });
-      setWorkloads(Object.entries(wMap).map(([name, tasks]) => ({ name, tasks })).sort((a, b) => b.tasks - a.tasks));
-
       setRawData({ tickets: t, tasks: tk, logs: dl, members: itMembersObj, positions: pos });
       setLoading(false);
       
@@ -73,42 +66,51 @@ export default function DashboardPage() {
     let filteredTasks = rawData.tasks;
     let filteredLogs = rawData.logs;
 
-    if (timeFilter !== 'All Time') {
-       const isMatch = (val: string) => {
-         if (!val) return timeFilter === 'Today';
-         let d: Date;
-         if (val.includes('T') || val.includes(' ')) {
-           d = new Date(val);
-         } else {
-           const [y, m, day] = val.split('-');
-           d = new Date(Number(y), Number(m)-1, Number(day), 12, 0, 0);
-         }
-         const now = new Date();
-         if (timeFilter === 'Today') return d.toDateString() === now.toDateString();
-         if (timeFilter === 'Yesterday') {
-           const y = new Date(); y.setDate(y.getDate() - 1);
-           return d.toDateString() === y.toDateString();
-         }
-         if (timeFilter === 'Last 7 Days') {
-           const l = new Date(); l.setDate(l.getDate() - 7);
-           return d >= l;
-         }
-         if (timeFilter === 'This Month') return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-         return true;
-       };
+    if (startDate && endDate) {
+       // Daily Logs strict date match
+       filteredLogs = rawData.logs.filter(x => {
+         if (!x.date) return false;
+         let dStr = x.date;
+         if (dStr.includes('T')) dStr = dStr.split('T')[0];
+         else if (dStr.includes(' ')) dStr = dStr.split(' ')[0];
+         return dStr >= startDate && dStr <= endDate;
+       });
 
-       filteredTickets = rawData.tickets.filter(x => isMatch(x.created_date));
-       filteredTasks = rawData.tasks.filter(x => isMatch(x.created_at || x.updated_at));
-       filteredLogs = rawData.logs.filter(x => isMatch(x.date));
+       // Tickets rollover logic
+       filteredTickets = rawData.tickets.filter(t => {
+         const dStr = (t.created_date || '').split('T')[0].split(' ')[0];
+         if (!dStr) return true; 
+         if (t.status === 'Resolved' || t.status === 'Done') return dStr >= startDate && dStr <= endDate;
+         return dStr <= endDate;
+       });
+
+       // Tasks rollover logic
+       filteredTasks = rawData.tasks.filter(t => {
+         const dStr = (t.due_date || t.created_at || t.updated_at || '').split('T')[0].split(' ')[0];
+         if (!dStr) return true; 
+         if (t.status === 'Done') return dStr >= startDate && dStr <= endDate;
+         return dStr <= endDate;
+       });
     }
+
+    // Workload: count tasks per assignee from FILTERED tasks
+    const wMap: Record<string, number> = {};
+    filteredTasks.forEach((task: any) => {
+      if (task.assignee) {
+        task.assignee.split(', ').forEach((a: string) => {
+          if (a && a !== 'Unassigned') wMap[a] = (wMap[a] || 0) + 1;
+        });
+      }
+    });
+    setWorkloads(Object.entries(wMap).map(([name, tasks]) => ({ name, tasks })).sort((a, b) => b.tasks - a.tasks));
 
     setStats({
       members: rawData.members.length,
       tickets: {
         total: filteredTickets.length,
-        open: filteredTickets.filter((x: { status: string }) => x.status === 'Open').length,
-        inProgress: filteredTickets.filter((x: { status: string }) => x.status === 'In Progress').length,
-        resolved: filteredTickets.filter((x: { status: string }) => ['Resolved', 'Closed'].includes(x.status)).length,
+        open: filteredTickets.filter((x: { status: string }) => x.status === 'Backlog').length,
+        inProgress: filteredTickets.filter((x: { status: string }) => x.status === 'In Progress' || x.status === 'Review').length,
+        resolved: filteredTickets.filter((x: { status: string }) => x.status === 'Done').length,
       },
       tasks: {
         total: filteredTasks.length,
@@ -120,12 +122,12 @@ export default function DashboardPage() {
       logs: filteredLogs.length,
       positions: rawData.positions.length,
     });
-  }, [timeFilter, rawData]);
+  }, [startDate, endDate, rawData]);
 
   const ticketPie = [
-    { name: 'Open', value: stats.tickets.open, color: '#3B82F6' },
-    { name: 'In Progress', value: stats.tickets.inProgress, color: '#8B5CF6' },
-    { name: 'Resolved', value: stats.tickets.resolved, color: '#10B981' },
+    { name: 'Backlog', value: stats.tickets.open, color: '#64748B' },
+    { name: 'In Progress', value: stats.tickets.inProgress, color: '#3B82F6' },
+    { name: 'Done', value: stats.tickets.resolved, color: '#10B981' },
   ].filter(d => d.value > 0);
 
   const taskBar = [
@@ -248,13 +250,18 @@ export default function DashboardPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <select value={timeFilter} onChange={e => setTimeFilter(e.target.value)} className="bg-surface border border-border rounded-lg px-4 py-2 text-sm font-medium text-foreground focus:ring-1 focus:ring-primary outline-none">
-            <option value="Today">Today</option>
-            <option value="Yesterday">Yesterday</option>
-            <option value="Last 7 Days">Last 7 Days</option>
-            <option value="This Month">This Month</option>
-            <option value="All Time">All Time</option>
-          </select>
+          <button 
+            onClick={() => { setStartDate(''); setEndDate(''); }} 
+            className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${!startDate && !endDate ? 'bg-primary text-primary-foreground shadow-sm' : 'bg-surface border border-border text-muted-foreground hover:bg-secondary'}`}
+          >
+            All Data
+          </button>
+          <div className="flex items-center gap-2 bg-surface border border-border rounded-lg px-2 py-1.5 shadow-sm">
+            <span className="text-xs font-medium text-muted-foreground pl-1 hidden sm:inline">Date:</span>
+            <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="bg-transparent text-sm text-foreground focus:outline-none cursor-pointer" />
+            <span className="text-muted-foreground">-</span>
+            <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-transparent text-sm text-foreground focus:outline-none cursor-pointer" />
+          </div>
           {canManageDashboard(currentUser) && (
             <button
               onClick={toggleEditLayout}
@@ -271,13 +278,11 @@ export default function DashboardPage() {
         if (blockId === 'stats') return (
           <LayoutWrapperBlock key="stats" id="stats">
             {/* Stat Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
               {[
                 { label: 'Team Members', val: stats.members, sub: 'Active Accounts', icon: <Users className="w-5 h-5" />, cls: 'text-primary bg-primary/10 border-primary/20' },
-                { label: 'Active Tickets', val: stats.tickets.open + stats.tickets.inProgress, sub: `${stats.tickets.resolved} resolved`, icon: <Ticket className="w-5 h-5" />, cls: 'text-orange-400 bg-orange-500/10 border-orange-500/20' },
+                { label: 'Active Tickets', val: stats.tickets.open + stats.tickets.inProgress, sub: `${stats.tickets.resolved} done`, icon: <Ticket className="w-5 h-5" />, cls: 'text-orange-400 bg-orange-500/10 border-orange-500/20' },
                 { label: 'Tasks', val: stats.tasks.total, sub: `${stats.tasks.done} done`, icon: <CheckSquare className="w-5 h-5" />, cls: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' },
-                { label: 'Daily Logs', val: stats.logs, sub: `in ${timeFilter}`, icon: <Activity className="w-5 h-5" />, cls: 'text-violet-400 bg-violet-500/10 border-violet-500/20' },
-                { label: 'Positions', val: stats.positions, sub: 'Jabatan', icon: <Briefcase className="w-5 h-5" />, cls: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20' },
               ].map(s => (
                 <div key={s.label} className="animate-in fade-in slide-in-from-bottom-4 duration-700 ease-out fill-mode-both rounded-2xl border p-4 flex items-center gap-3" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
                   <div className={`p-2.5 rounded-xl border flex-shrink-0 ${s.cls}`}>{s.icon}</div>
@@ -288,44 +293,6 @@ export default function DashboardPage() {
                   </div>
                 </div>
               ))}
-            </div>
-          </LayoutWrapperBlock>
-        );
-
-        if (blockId === 'activity') return (
-          <LayoutWrapperBlock key="activity" id="activity">
-            <div className="rounded-2xl border p-4 sm:p-5 flex flex-col h-[380px]" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
-              <div className="flex items-center justify-between mb-4 pb-3 border-b border-border/50">
-                <div className="flex items-center gap-2">
-                  <Activity className="w-5 h-5 text-primary" />
-                  <h2 className="font-semibold text-foreground">Live Activity Feed</h2>
-                </div>
-              </div>
-              <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-4">
-                {auditLogs.slice(0, 15).length > 0 ? auditLogs.slice(0, 15).map((log) => (
-                  <div key={log.id} className="group flex items-start gap-3 relative animate-in fade-in slide-in-from-bottom-4 duration-700 ease-out fill-mode-both">
-                    <div className="absolute left-[11px] top-6 bottom-[-16px] w-[2px] bg-border group-last:hidden" />
-                    <div className="relative z-10 w-6 h-6 rounded-full bg-surface border-2 border-primary flex items-center justify-center flex-shrink-0 mt-0.5">
-                      <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                    </div>
-                    <div className="flex-1 min-w-0 bg-muted/40 p-2.5 rounded-lg border border-border/50 transition-colors hover:bg-muted/80">
-                      <div className="flex items-center justify-between gap-2 mb-1">
-                        <span className="text-xs font-semibold text-foreground">{log.action} <span className="font-normal opacity-60">· {log.module}</span></span>
-                        <span className="text-[10px] text-muted-foreground whitespace-nowrap">{new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                      </div>
-                      <div className="text-xs text-muted-foreground truncate">{log.details}</div>
-                      <div className="text-[10px] font-medium text-primary mt-1.5 flex items-center gap-1">
-                        <Users className="w-3 h-3" /> {log.user_name}
-                      </div>
-                    </div>
-                  </div>
-                )) : (
-                  <div className="h-full flex flex-col items-center justify-center text-muted-foreground opacity-60">
-                    <Activity className="w-8 h-8 mb-2" />
-                    <p className="text-sm">No activity recorded yet</p>
-                  </div>
-                )}
-              </div>
             </div>
           </LayoutWrapperBlock>
         );

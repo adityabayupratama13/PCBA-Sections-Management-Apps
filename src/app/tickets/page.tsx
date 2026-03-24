@@ -29,7 +29,9 @@ export default function TicketsPage() {
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState('All');
   const [filterPriority, setFilterPriority] = useState('All');
-  const [filterDate, setFilterDate] = useState<string>('');
+  const defaultStr = new Date().toISOString().split('T')[0];
+  const [startDate, setStartDate] = useState<string>(defaultStr);
+  const [endDate, setEndDate] = useState<string>(defaultStr);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTicket, setEditingTicket] = useState<Ticket | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Ticket | null>(null);
@@ -40,7 +42,6 @@ export default function TicketsPage() {
   const { currentUser } = useAuth();
 
   useEffect(() => {
-    setFilterDate(new Date().toISOString().split('T')[0]);
     fetch('/api/articles').then(r => r.json()).then(setArticles).catch(console.error);
   }, []);
 
@@ -59,16 +60,7 @@ export default function TicketsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tickets]);
 
-  const navigateDate = (days: number) => {
-    if (!filterDate) {
-      const today = new Date();
-      setFilterDate(today.toISOString().split('T')[0]);
-      return;
-    }
-    const d = new Date(filterDate);
-    d.setUTCDate(d.getUTCDate() + days);
-    setFilterDate(d.toISOString().split('T')[0]);
-  };
+
 
   const exportPDF = () => {
     const doc = new jsPDF();
@@ -130,11 +122,11 @@ export default function TicketsPage() {
     return matchesSearch && matchesStatus && matchesPriority;
   });
 
-  if (filterDate) {
+  if (startDate && endDate) {
     filteredTickets = filteredTickets.filter(t => {
       const createdStr = t.created_date.substring(0, 10);
-      if (t.status === 'Done') return createdStr === filterDate;
-      return createdStr <= filterDate; // Rollover unresolved past tickets
+      if (t.status === 'Done' || t.status === 'Resolved') return createdStr >= startDate && createdStr <= endDate;
+      return createdStr <= endDate; // Rollover unresolved past tickets
     });
   }
 
@@ -293,22 +285,35 @@ export default function TicketsPage() {
       </div>
 
       <div className="flex bg-surface p-3 rounded-lg border border-border items-center gap-3">
-        <label className="text-sm font-medium text-foreground whitespace-nowrap">Daily Filter :</label>
-        <div className="flex items-center gap-1">
-          <button onClick={() => navigateDate(-1)} className="p-1 hover:bg-secondary rounded text-muted-foreground transition-colors"><ChevronLeft className="w-4 h-4" /></button>
+        <label className="text-sm font-medium text-foreground whitespace-nowrap">Time Filter :</label>
+
+        <button 
+          onClick={() => { setStartDate(''); setEndDate(''); }} 
+          className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${!startDate && !endDate ? 'bg-primary text-primary-foreground shadow-sm' : 'bg-transparent text-muted-foreground hover:bg-secondary'}`}
+        >
+          All Data
+        </button>
+
+        <div className="h-4 w-px bg-border mx-1" />
+
+        <div className="flex items-center gap-2">
           <input 
             type="date" 
-            value={filterDate} 
-            onChange={e => setFilterDate(e.target.value)} 
-            className="bg-background border border-border rounded-md px-2 py-1 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+            value={startDate} 
+            onChange={e => setStartDate(e.target.value)} 
+            className={`bg-background border border-border rounded-md px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary transition-all ${startDate && endDate ? 'ring-1 ring-primary border-primary' : ''}`}
           />
-          <button onClick={() => navigateDate(1)} className="p-1 hover:bg-secondary rounded text-muted-foreground transition-colors"><ChevronRight className="w-4 h-4" /></button>
+          <span className="text-muted-foreground">-</span>
+          <input 
+            type="date" 
+            value={endDate} 
+            onChange={e => setEndDate(e.target.value)} 
+            className={`bg-background border border-border rounded-md px-2 py-1.5 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary transition-all ${startDate && endDate ? 'ring-1 ring-primary border-primary' : ''}`}
+          />
         </div>
-        {filterDate && (
-          <button onClick={() => setFilterDate('')} className="text-xs text-muted-foreground hover:text-foreground">Clear</button>
-        )}
-        <p className="text-xs text-muted-foreground ml-auto hidden sm:block">
-          Show tickets active on this day, overriding rollovers
+        
+        <p className="text-xs text-muted-foreground ml-auto hidden md:block">
+          {startDate && endDate ? "Showing tickets active or resolved in this date range." : "Showing all tickets across all dates."}
         </p>
       </div>
 
