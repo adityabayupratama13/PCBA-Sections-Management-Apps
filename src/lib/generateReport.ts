@@ -47,7 +47,7 @@ export async function generateDailyReport(data: any, reportDate: string) {
   };
 
   const addSectionTitle = (title: string, color: [number, number, number], icon?: string) => {
-    if (currentY > pageHeight - 40) { doc.addPage(); currentY = margin; }
+    if (currentY > pageHeight - 90) { doc.addPage(); currentY = margin; }
     doc.setFillColor(...color);
     doc.roundedRect(margin, currentY, 6, 6, 1, 1, 'F');
     doc.setTextColor(...colors.textMain);
@@ -92,33 +92,95 @@ export async function generateDailyReport(data: any, reportDate: string) {
 
   // Overall Stats
   addSectionTitle("Today's Overview", colors.purple);
+  
+  const drawProgressBar = (label: string, done: number, progress: number, backlog: number, total: number, y: number) => {
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(colors.textMain[0], colors.textMain[1], colors.textMain[2]);
+    doc.text(`${label} (${total} total)`, margin, y);
+    
+    const barWidth = 170;
+    const h = 8;
+    const yBar = y + 4;
+    
+    if (total === 0) {
+      doc.setFillColor(colors.bgLight[0], colors.bgLight[1], colors.bgLight[2]);
+      doc.rect(margin, yBar, barWidth, h, 'F');
+    } else {
+      const wDone = (done / total) * barWidth;
+      const wProg = (progress / total) * barWidth;
+      const wBack = (backlog / total) * barWidth;
+      
+      let curX = margin;
+      if (wDone > 0) {
+        doc.setFillColor(16, 185, 129); // Success
+        doc.rect(curX, yBar, wDone, h, 'F');
+        curX += wDone;
+      }
+      if (wProg > 0) {
+        doc.setFillColor(245, 158, 11); // Warning
+        doc.rect(curX, yBar, wProg, h, 'F');
+        curX += wProg;
+      }
+      if (wBack > 0) {
+        doc.setFillColor(239, 68, 68); // Danger
+        doc.rect(curX, yBar, wBack, h, 'F');
+      }
+    }
+
+    // Legend
+    const yLeg = yBar + h + 6;
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "normal");
+    
+    doc.setFillColor(16, 185, 129);
+    doc.rect(margin, yLeg - 3, 4, 4, 'F');
+    doc.text(`Done (${done})`, margin + 6, yLeg);
+    
+    doc.setFillColor(245, 158, 11);
+    doc.rect(margin + 45, yLeg - 3, 4, 4, 'F');
+    doc.text(`In Progress (${progress})`, margin + 51, yLeg);
+    
+    doc.setFillColor(239, 68, 68);
+    doc.rect(margin + 105, yLeg - 3, 4, 4, 'F');
+    doc.text(`Backlog (${backlog})`, margin + 111, yLeg);
+  };
+
+  drawProgressBar(
+    "New Tickets", 
+    data.tickets.done, 
+    data.tickets.inProgress, 
+    data.tickets.backlog, 
+    data.tickets.totalCreatedToday, 
+    currentY
+  );
+  currentY += 35;
+
+  drawProgressBar(
+    "New Tasks", 
+    data.tasks.done, 
+    data.tasks.inProgress + (data.tasks.review || 0), 
+    data.tasks.backlog, 
+    data.tasks.totalCreatedToday, 
+    currentY
+  );
+  currentY += 35;
+
   addSummaryCards([
-    { label: "Active Tickets", value: data.tickets.totalActive, color: colors.danger },
-    { label: "Resolved Tickets", value: data.tickets.resolvedToday, color: colors.success },
-    { label: "Active Tasks", value: data.tasks.totalActive, color: colors.accent },
-    { label: "Resolved Tasks", value: data.tasks.resolvedToday, color: colors.success },
+    { label: "Manpower (Shift 1)", value: data.attendance.shift1 || 0, color: colors.primary },
+    { label: "Manpower (Shift 2)", value: data.attendance.shift2 || 0, color: colors.accent },
+    { label: "Manpower (Shift 3)", value: data.attendance.shift3 || 0, color: colors.purple },
+    { label: "Manpower (Normal)", value: data.attendance.shiftNormal || 0, color: colors.success },
   ]);
 
   addSummaryCards([
-    { label: "Total Members", value: data.members.total, color: colors.primary },
-    { label: "Present Today", value: data.attendance.present, color: colors.success },
-    { label: "Active Projects", value: data.projects.totalActive, color: colors.purple },
-    { label: "Pending Leave/OT", value: data.leaves.pending + data.overtime.pending, color: colors.warning },
+    { label: "Weekly Projects", value: data.projects.totalActive || 0, color: colors.warning },
+    { label: "Weekly Leaves", value: data.leaves.total || 0, color: colors.danger },
+    { label: "OT Requests", value: data.overtime.total || 0, color: colors.accent },
+    { label: "Present Today", value: data.attendance.present || 0, color: colors.success },
   ]);
 
-  // Daily Logs Table
-  addSectionTitle("Daily Activities Log", colors.accent);
-  autoTable(doc, {
-    startY: currentY,
-    head: [['Member', 'Activity', 'Hours', 'Location']],
-    body: data.dailyLogs.records.map((r: any) => [r.member, r.activity, r.hours, r.location]),
-    theme: 'grid',
-    headStyles: { fillColor: colors.accent, textColor: 255, fontSize: 10 },
-    bodyStyles: { fontSize: 9, textColor: colors.textMain },
-    alternateRowStyles: { fillColor: colors.bgLight },
-    margin: { left: margin, right: margin },
-  });
-  currentY = (doc as any).lastAutoTable.finalY + 15;
+  // Removed Daily Activities Log
 
   // --- PAGE 2: DETAILED BREAKDOWN ---
   doc.addPage();
@@ -127,7 +189,7 @@ export async function generateDailyReport(data: any, reportDate: string) {
 
   // Tickets
   const ticketRecords = data.tickets.recent.length ? data.tickets.recent : [{ id: '-', title: 'No active tickets', status: '-', priority: '-' }];
-  addSectionTitle("Active Tickets", colors.danger);
+  addSectionTitle("New Tickets (06:30 Cut-off)", colors.danger);
   autoTable(doc, {
     startY: currentY,
     head: [['ID', 'Title', 'Status', 'Priority']],
@@ -137,30 +199,46 @@ export async function generateDailyReport(data: any, reportDate: string) {
     styles: { fontSize: 9 },
     alternateRowStyles: { fillColor: colors.bgLight },
     margin: { left: margin, right: margin },
+    pageBreak: 'avoid',
+    didParseCell: function(celldata) {
+      if (celldata.section === 'body' && celldata.column.index === 2) {
+        const val = celldata.cell.raw;
+        if (val === 'Done') celldata.cell.styles.textColor = [16, 185, 129];
+        else if (val === 'In Progress' || val === 'Review') celldata.cell.styles.textColor = [245, 158, 11];
+        else if (val === 'Backlog') celldata.cell.styles.textColor = [239, 68, 68];
+      }
+    }
   });
   currentY = (doc as any).lastAutoTable.finalY + 15;
 
-  // Attendance & Overtime
-  const recordsAtt = data.attendance.records.length ? data.attendance.records : [['-', 'No Records Found', '-', '-']];
-  addSectionTitle("Attendance Status", colors.success);
+  // Tasks
+  const taskRecords = data.tasks.totalCreatedToday > 0 ? (data as any).tasks?.byAssignee || [] : [];
+  // Since we don't have task details arrays in the API response yet, we'll skip the task detail table 
+  // or we can add it later if the API provides data.tasks.recent. 
+  // For now, let's keep the executive summary for Tasks intact.
+
+  // Attendance
+  const recordsAtt = data.attendance.records.length ? data.attendance.records : [{ name: '-', shift: '-' }];
+  addSectionTitle("Attendance Layout", colors.success);
   autoTable(doc, {
     startY: currentY,
-    head: [['Name', 'Status', 'Time In', 'Time Out']],
-    body: recordsAtt.map((r: any) => r[0] === '-' ? r : [r.name, r.status, r.time_in, r.time_out]),
+    head: [['Name', 'Shift']],
+    body: recordsAtt.map((r: any) => [r.name, r.shift]),
     theme: 'grid',
     headStyles: { fillColor: colors.success, textColor: 255 },
     styles: { fontSize: 9 },
     alternateRowStyles: { fillColor: colors.bgLight },
     margin: { left: margin, right: margin },
+    pageBreak: 'avoid',
   });
   currentY = (doc as any).lastAutoTable.finalY + 15;
 
   // Active Projects
-  addSectionTitle("Active Projects", colors.purple);
-  const activeProjects = data.projects.list.filter((p: any) => p.status === 'Active' || p.status === 'Planning');
+  addSectionTitle("Weekly Active Projects", colors.purple);
+  const activeProjects = data.projects.list;
   const projectBody = activeProjects.length 
     ? activeProjects.map((p: any) => [p.name, p.pic, `${p.progress}%`, p.status, p.end_date]) 
-    : [['-', 'No active projects found', '-', '-', '-']];
+    : [['-', 'No active projects found this week', '-', '-', '-']];
   
   autoTable(doc, {
     startY: currentY,
@@ -172,6 +250,59 @@ export async function generateDailyReport(data: any, reportDate: string) {
     alternateRowStyles: { fillColor: colors.bgLight },
     margin: { left: margin, right: margin },
   });
+  currentY = (doc as any).lastAutoTable.finalY + 15;
+
+  // Manpower Status
+  addSectionTitle("Manpower Details", colors.primary);
+  autoTable(doc, {
+    startY: currentY,
+    head: [['Name', 'Emp. Status', 'Contract Dur.', 'Leave Bal.', 'Account']],
+    body: data.members.manpower.map((m: any) => [m.name, m.employment_status, m.contract_duration + ' mo', m.leave_balance + ' days', m.status]),
+    theme: 'grid',
+    headStyles: { fillColor: colors.primary, textColor: 255 },
+    styles: { fontSize: 9 },
+    alternateRowStyles: { fillColor: colors.bgLight },
+    margin: { left: margin, right: margin },
+  });
+  currentY = (doc as any).lastAutoTable.finalY + 15;
+
+  doc.addPage();
+  currentY = margin;
+  addHeader("IT Operations Daily Report", "LEAVE & OVERTIME");
+
+  // Weekly Leaves
+  addSectionTitle("Weekly Leave Requests", colors.danger);
+  const leavesBody = data.leaves.records.length 
+    ? data.leaves.records.map((l: any) => [l.name, l.type, l.start, l.end, l.status])
+    : [['-', '-', 'No leaves requested this week', '-', '-']];
+  autoTable(doc, {
+    startY: currentY,
+    head: [['Name', 'Leave Type', 'Start Date', 'End Date', 'Status']],
+    body: leavesBody,
+    theme: 'grid',
+    headStyles: { fillColor: colors.danger, textColor: 255 },
+    styles: { fontSize: 9 },
+    alternateRowStyles: { fillColor: colors.bgLight },
+    margin: { left: margin, right: margin },
+  });
+  currentY = (doc as any).lastAutoTable.finalY + 15;
+
+  // Overtime Tracking
+  addSectionTitle("Overtime Requests (Today)", colors.accent);
+  const otBody = data.overtime.records.length 
+    ? data.overtime.records.map((o: any) => [o.name, o.hours + ' hrs', o.reason, o.status])
+    : [['-', '-', 'No overtime logged today', '-']];
+  autoTable(doc, {
+    startY: currentY,
+    head: [['Name', 'Hours', 'Reason', 'Status']],
+    body: otBody,
+    theme: 'grid',
+    headStyles: { fillColor: colors.accent, textColor: 255 },
+    styles: { fontSize: 9 },
+    alternateRowStyles: { fillColor: colors.bgLight },
+    margin: { left: margin, right: margin },
+  });
+  currentY = (doc as any).lastAutoTable.finalY + 15;
 
   // Global Page Footer
   const pageCount = (doc.internal as any).getNumberOfPages();

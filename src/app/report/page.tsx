@@ -93,40 +93,53 @@ export default function ReportPage() {
               </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="p-4 rounded-2xl bg-surface border border-border">
-                <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Active Tickets</div>
-                <div className="text-3xl font-bold text-foreground">{data.tickets.totalActive}</div>
-                <div className="flex items-center gap-2 mt-2 text-xs font-medium text-danger">
-                  <ShieldAlert className="w-3.5 h-3.5" />
-                  {data.tickets.createdToday} new today
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="col-span-1 p-5 rounded-2xl bg-surface border border-border">
+                <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">New Tickets</div>
+                <div className="flex items-baseline gap-2 mb-4">
+                  <div className="text-3xl font-bold text-foreground">{data.tickets.totalCreatedToday}</div>
+                  <div className="text-xs font-medium text-danger flex items-center gap-1"><ShieldAlert className="w-3.5 h-3.5" /> logged today</div>
+                </div>
+                {/* Visual Chart Bar */}
+                <div className="h-2.5 w-full bg-surface-hover rounded-full overflow-hidden flex mb-2">
+                  <div className="bg-success h-full" style={{ width: `${(data.tickets.done / (data.tickets.totalCreatedToday || 1)) * 100}%` }}></div>
+                  <div className="bg-warning h-full" style={{ width: `${(data.tickets.inProgress / (data.tickets.totalCreatedToday || 1)) * 100}%` }}></div>
+                  <div className="bg-danger h-full" style={{ width: `${(data.tickets.backlog / (data.tickets.totalCreatedToday || 1)) * 100}%` }}></div>
+                </div>
+                <div className="flex justify-between text-xs text-muted-foreground font-medium">
+                  <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-success"></div> Done ({data.tickets.done})</span>
+                  <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-warning"></div> In Prog ({data.tickets.inProgress})</span>
+                  <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-danger"></div> Backlog ({data.tickets.backlog})</span>
                 </div>
               </div>
 
-              <div className="p-4 rounded-2xl bg-surface border border-border">
-                <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Active Tasks</div>
-                <div className="text-3xl font-bold text-foreground">{data.tasks.totalActive}</div>
-                <div className="flex items-center gap-2 mt-2 text-xs font-medium text-warning">
-                  <Clock className="w-3.5 h-3.5" />
-                  {data.tasks.overdue} overdue
+              <div className="col-span-1 p-5 rounded-2xl bg-surface border border-border">
+                <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-2">New Tasks</div>
+                <div className="flex items-baseline gap-2 mb-4">
+                  <div className="text-3xl font-bold text-foreground">{data.tasks.totalCreatedToday}</div>
+                  <div className="text-xs font-medium text-success flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" /> assigned today</div>
+                </div>
+                {/* Visual Chart Bar */}
+                <div className="h-2.5 w-full bg-surface-hover rounded-full overflow-hidden flex mb-2">
+                  <div className="bg-success h-full" style={{ width: `${(data.tasks.done / (data.tasks.totalCreatedToday || 1)) * 100}%` }}></div>
+                  <div className="bg-warning h-full" style={{ width: `${((data.tasks.inProgress + data.tasks.review) / (data.tasks.totalCreatedToday || 1)) * 100}%` }}></div>
+                  <div className="bg-danger h-full" style={{ width: `${(data.tasks.backlog / (data.tasks.totalCreatedToday || 1)) * 100}%` }}></div>
+                </div>
+                <div className="flex justify-between text-xs text-muted-foreground font-medium">
+                  <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-success"></div> Done ({data.tasks.done})</span>
+                  <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-warning"></div> In Prog ({data.tasks.inProgress + data.tasks.review})</span>
+                  <span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-danger"></div> Backlog ({data.tasks.backlog})</span>
                 </div>
               </div>
 
-              <div className="p-4 rounded-2xl bg-surface border border-border">
-                <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Attendance</div>
-                <div className="text-3xl font-bold text-foreground">{data.attendance.present} <span className="text-lg text-muted-foreground font-normal">/ {data.members.total}</span></div>
-                <div className="flex items-center gap-2 mt-2 text-xs font-medium text-success">
-                  <Users className="w-3.5 h-3.5" />
-                  present today
+              <div className="col-span-1 p-5 rounded-2xl bg-surface border border-border flex flex-col justify-between">
+                <div>
+                  <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Attendance</div>
+                  <div className="text-3xl font-bold text-foreground">{data.attendance.present} <span className="text-lg text-muted-foreground font-normal">/ {data.members.total}</span></div>
                 </div>
-              </div>
-
-              <div className="p-4 rounded-2xl bg-surface border border-border">
-                <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Daily Logs</div>
-                <div className="text-3xl font-bold text-foreground">{data.dailyLogs.total}</div>
                 <div className="flex items-center gap-2 mt-2 text-xs font-medium text-primary">
-                  <FileText className="w-3.5 h-3.5" />
-                  recorded today
+                  <Users className="w-3.5 h-3.5" />
+                  members present across all shifts today
                 </div>
               </div>
             </div>
