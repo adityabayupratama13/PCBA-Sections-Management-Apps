@@ -93,16 +93,16 @@ export async function generateDailyReport(data: any, reportDate: string) {
   // Overall Stats
   addSectionTitle("Today's Overview", colors.purple);
   addSummaryCards([
-    { label: "New Tickets", value: data.tickets.createdToday, color: colors.danger },
-    { label: "Done Tickets", value: data.tickets.done, color: colors.success },
-    { label: "New Tasks", value: data.tasks.createdToday, color: colors.accent },
-    { label: "Overdue Tasks", value: data.tasks.overdue, color: colors.warning },
+    { label: "Active Tickets", value: data.tickets.totalActive, color: colors.danger },
+    { label: "Resolved Tickets", value: data.tickets.resolvedToday, color: colors.success },
+    { label: "Active Tasks", value: data.tasks.totalActive, color: colors.accent },
+    { label: "Resolved Tasks", value: data.tasks.resolvedToday, color: colors.success },
   ]);
 
   addSummaryCards([
     { label: "Total Members", value: data.members.total, color: colors.primary },
     { label: "Present Today", value: data.attendance.present, color: colors.success },
-    { label: "Total Projects", value: data.projects.total, color: colors.purple },
+    { label: "Active Projects", value: data.projects.totalActive, color: colors.purple },
     { label: "Pending Leave/OT", value: data.leaves.pending + data.overtime.pending, color: colors.warning },
   ]);
 
@@ -126,11 +126,12 @@ export async function generateDailyReport(data: any, reportDate: string) {
   addHeader("IT Operations Daily Report", "DETAILED BREAKDOWN");
 
   // Tickets
-  addSectionTitle("Tickets Status", colors.danger);
+  const ticketRecords = data.tickets.recent.length ? data.tickets.recent : [{ id: '-', title: 'No active tickets', status: '-', priority: '-' }];
+  addSectionTitle("Active Tickets", colors.danger);
   autoTable(doc, {
     startY: currentY,
     head: [['ID', 'Title', 'Status', 'Priority']],
-    body: data.tickets.recent.map((t: any) => [t.id, t.title, t.status, t.priority]),
+    body: ticketRecords.map((t: any) => [t.id, t.title, t.status, t.priority]),
     theme: 'grid',
     headStyles: { fillColor: colors.danger, textColor: 255 },
     styles: { fontSize: 9 },

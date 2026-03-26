@@ -95,8 +95,8 @@ export default function ReportPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="p-4 rounded-2xl bg-surface border border-border">
-                <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Tickets</div>
-                <div className="text-3xl font-bold text-foreground">{data.tickets.total}</div>
+                <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Active Tickets</div>
+                <div className="text-3xl font-bold text-foreground">{data.tickets.totalActive}</div>
                 <div className="flex items-center gap-2 mt-2 text-xs font-medium text-danger">
                   <ShieldAlert className="w-3.5 h-3.5" />
                   {data.tickets.createdToday} new today
@@ -104,8 +104,8 @@ export default function ReportPage() {
               </div>
 
               <div className="p-4 rounded-2xl bg-surface border border-border">
-                <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Tasks</div>
-                <div className="text-3xl font-bold text-foreground">{data.tasks.total}</div>
+                <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-3">Active Tasks</div>
+                <div className="text-3xl font-bold text-foreground">{data.tasks.totalActive}</div>
                 <div className="flex items-center gap-2 mt-2 text-xs font-medium text-warning">
                   <Clock className="w-3.5 h-3.5" />
                   {data.tasks.overdue} overdue

@@ -20,34 +20,36 @@ export async function GET(req: NextRequest) {
   try {
     // ── Tickets ──────────────────────────────────────────────
     const [allTickets] = await db.query('SELECT * FROM tickets') as any;
-    const ticketsToday = allTickets.filter((t: any) => toMysqlDate(t.created_date) === date);
+    const activeTickets = allTickets.filter((t: any) => toMysqlDate(t.created_date) === date || toMysqlDate(t.updated_at) === date);
     const ticketStats = {
-      total: allTickets.length,
-      createdToday: ticketsToday.length,
-      backlog: allTickets.filter((t: any) => t.status === 'Backlog').length,
-      inProgress: allTickets.filter((t: any) => t.status === 'In Progress' || t.status === 'Review').length,
-      done: allTickets.filter((t: any) => t.status === 'Done').length,
-      critical: allTickets.filter((t: any) => t.priority === 'Critical').length,
-      high: allTickets.filter((t: any) => t.priority === 'High').length,
-      medium: allTickets.filter((t: any) => t.priority === 'Medium').length,
-      low: allTickets.filter((t: any) => t.priority === 'Low').length,
-      recent: allTickets.slice(0, 8).map((t: any) => ({ id: t.id, title: t.title, status: t.status, priority: t.priority })),
+      totalActive: activeTickets.length,
+      createdToday: activeTickets.filter((t: any) => toMysqlDate(t.created_date) === date).length,
+      resolvedToday: activeTickets.filter((t: any) => t.status === 'Done' && toMysqlDate(t.updated_at) === date).length,
+      backlog: activeTickets.filter((t: any) => t.status === 'Backlog').length,
+      inProgress: activeTickets.filter((t: any) => t.status === 'In Progress' || t.status === 'Review').length,
+      done: activeTickets.filter((t: any) => t.status === 'Done').length,
+      critical: activeTickets.filter((t: any) => t.priority === 'Critical').length,
+      high: activeTickets.filter((t: any) => t.priority === 'High').length,
+      medium: activeTickets.filter((t: any) => t.priority === 'Medium').length,
+      low: activeTickets.filter((t: any) => t.priority === 'Low').length,
+      recent: activeTickets.map((t: any) => ({ id: t.id, title: t.title, status: t.status, priority: t.priority })),
     };
 
     // ── Tasks ─────────────────────────────────────────────────
     const [allTasks] = await db.query('SELECT * FROM tasks') as any;
-    const tasksToday = allTasks.filter((t: any) => toMysqlDate(t.created_at) === date);
+    const activeTasks = allTasks.filter((t: any) => toMysqlDate(t.created_at) === date || toMysqlDate(t.updated_at) === date || (t.due_date && toMysqlDate(t.due_date) === date));
     const taskStats = {
-      total: allTasks.length,
-      createdToday: tasksToday.length,
-      backlog: allTasks.filter((t: any) => t.status === 'Backlog').length,
-      inProgress: allTasks.filter((t: any) => t.status === 'In Progress').length,
-      review: allTasks.filter((t: any) => t.status === 'Review').length,
-      done: allTasks.filter((t: any) => t.status === 'Done').length,
-      overdue: allTasks.filter((t: any) => t.due_date && t.due_date < date && t.status !== 'Done').length,
+      totalActive: activeTasks.length,
+      createdToday: activeTasks.filter((t: any) => toMysqlDate(t.created_at) === date).length,
+      resolvedToday: activeTasks.filter((t: any) => t.status === 'Done' && toMysqlDate(t.updated_at) === date).length,
+      backlog: activeTasks.filter((t: any) => t.status === 'Backlog').length,
+      inProgress: activeTasks.filter((t: any) => t.status === 'In Progress').length,
+      review: activeTasks.filter((t: any) => t.status === 'Review').length,
+      done: activeTasks.filter((t: any) => t.status === 'Done').length,
+      overdue: activeTasks.filter((t: any) => t.due_date && toMysqlDate(t.due_date) < date && t.status !== 'Done').length,
       byAssignee: (() => {
         const map: Record<string, number> = {};
-        allTasks.forEach((t: any) => { if (t.assignee) map[t.assignee] = (map[t.assignee] || 0) + 1; });
+        activeTasks.forEach((t: any) => { if (t.assignee) map[t.assignee] = (map[t.assignee] || 0) + 1; });
         return Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([name, count]) => ({ name, count }));
       })(),
     };
@@ -73,13 +75,14 @@ export async function GET(req: NextRequest) {
 
     // ── Projects ──────────────────────────────────────────────
     const [projects] = await db.query('SELECT * FROM projects') as any;
+    const activeProjects = projects.filter((p: any) => toMysqlDate(p.start_date) <= date && toMysqlDate(p.end_date) >= date);
     const projectStats = {
-      total: projects.length,
-      planning: projects.filter((p: any) => p.status === 'Planning').length,
-      active: projects.filter((p: any) => p.status === 'Active').length,
-      onHold: projects.filter((p: any) => p.status === 'On Hold').length,
-      completed: projects.filter((p: any) => p.status === 'Completed').length,
-      list: projects.map((p: any) => ({ name: p.name, pic: p.pic, status: p.status, progress: p.progress, end_date: p.end_date })),
+      totalActive: activeProjects.length,
+      planning: activeProjects.filter((p: any) => p.status === 'Planning').length,
+      active: activeProjects.filter((p: any) => p.status === 'Active').length,
+      onHold: activeProjects.filter((p: any) => p.status === 'On Hold').length,
+      completed: activeProjects.filter((p: any) => p.status === 'Completed').length,
+      list: activeProjects.map((p: any) => ({ name: p.name, pic: p.pic, status: p.status, progress: p.progress, end_date: p.end_date })),
     };
 
     // ── Daily Logs ────────────────────────────────────────────
