@@ -112,7 +112,7 @@ export async function GET(req: NextRequest) {
     };
     
     // Derived Present dynamically from the Roster
-    attendanceData.present = attendanceData.shift1 + attendanceData.shift2 + attendanceData.shift3 + attendanceData.shiftNormal;
+    attStats.present = attStats.shift1 + attStats.shift2 + attStats.shift3 + attStats.shiftNormal;
 
     // ── Projects ──────────────────────────────────────────────
     const [projects] = await db.query('SELECT * FROM projects') as any;
