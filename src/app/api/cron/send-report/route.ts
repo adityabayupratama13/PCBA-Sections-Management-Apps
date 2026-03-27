@@ -73,30 +73,31 @@ export async function POST(req: Request) {
 <title>IT Operations Daily Report</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { background-color: #f1f5f9; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; color: #334155; padding: 40px 16px; min-height: 100vh; }
-  .email-container { max-width: 680px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05); }
+  body { background-color: #f1f5f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #334155; padding: 40px 16px; min-height: 100vh; }
+  .email-container { max-width: 680px; margin: 0 auto; background: #ffffff; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1); }
 
-  /* Header Block - Deep Blue Elegance */
-  .header { background-color: #1e3a8a; background-image: linear-gradient(135deg, #1e3a8a 0%, #1d4ed8 100%); color: #ffffff; padding: 48px 40px; position: relative; }
-  .header-brand { font-size: 13px; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; color: #93c5fd; display: block; margin-bottom: 24px; }
-  .header h1 { font-size: 32px; font-weight: 800; line-height: 1.1; margin-bottom: 12px; color: #ffffff; letter-spacing: -0.02em; }
-  .header p { font-size: 15px; color: #bfdbfe; font-weight: 400; line-height: 1.5; }
+  /* Header Block - Warm Blue Elegance */
+  .header { background-color: #1e3a8a; background-image: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: #ffffff; padding: 40px 40px; position: relative; text-align: center; }
+  .header-brand { font-size: 13px; font-weight: 700; letter-spacing: 0.15em; text-transform: uppercase; color: #dbeafe; display: block; margin-bottom: 24px; }
+  .header-image { display: block; margin: 0 auto 24px; max-width: 250px; width: 100%; border-radius: 16px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+  .header h1 { font-size: 30px; font-weight: 800; line-height: 1.2; margin-bottom: 12px; color: #ffffff; letter-spacing: -0.01em; }
+  .header p { font-size: 16px; color: #eff6ff; font-weight: 500; line-height: 1.5; }
 
   /* Body Block */
   .body { padding: 40px; }
 
-  /* Formal Intro */
-  .intro { font-size: 15px; line-height: 1.7; color: #475569; margin-bottom: 32px; padding-bottom: 32px; border-bottom: 1px solid #e2e8f0; }
-  .intro strong { color: #0f172a; font-weight: 600; display: block; margin-bottom: 12px; font-size: 16px; }
+  /* Friendly Intro */
+  .intro { font-size: 16px; line-height: 1.8; color: #475569; margin-bottom: 36px; padding-bottom: 32px; border-bottom: 2px dashed #f1f5f9; }
+  .intro strong { color: #0f172a; font-weight: 700; display: block; margin-bottom: 12px; font-size: 18px; color: #1e3a8a; }
 
-  .section-title { font-size: 18px; font-weight: 700; color: #0f172a; margin-bottom: 20px; }
+  .section-title { font-size: 20px; font-weight: 800; color: #1e293b; margin-bottom: 20px; }
 
-  /* Simulated Dashboard Grid */
+  /* Simulated Dashboard Grid - Rounder and Softer */
   .kpi-table { width: 100%; border-collapse: separate; border-spacing: 16px 16px; margin-left: -16px; margin-bottom: 32px; width: calc(100% + 32px); }
-  .kpi-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 24px; width: 50%; vertical-align: top; }
-  .kpi-title { font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 12px; }
-  .kpi-value { font-size: 36px; font-weight: 800; color: #0f172a; line-height: 1; margin-bottom: 16px; font-family: monospace; }
-  .kpi-value span { font-size: 14px; color: #94a3b8; font-family: -apple-system, sans-serif; font-weight: 500; }
+  .kpi-card { background: #ffffff; border: 2px solid #f1f5f9; border-radius: 16px; padding: 24px; width: 50%; vertical-align: top; box-shadow: 0 4px 6px -4px rgba(0,0,0,0.05); }
+  .kpi-title { font-size: 12px; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 14px; }
+  .kpi-value { font-size: 42px; font-weight: 800; color: #0f172a; line-height: 1; margin-bottom: 16px; font-family: monospace; letter-spacing: -0.05em; }
+  .kpi-value span { font-size: 15px; color: #94a3b8; font-family: -apple-system, sans-serif; font-weight: 600; letter-spacing: normal; }
   
   /* Synthetic Charts */
   .kpi-chart-wrap { width: 100%; display: table; height: 8px; border-radius: 4px; overflow: hidden; background: #e2e8f0; margin-bottom: 12px; }
@@ -123,7 +124,7 @@ export async function POST(req: Request) {
   .td-title { font-weight: 600; color: #0f172a; }
 
   /* Badges */
-  .badge { display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+  .badge { display: inline-block; padding: 6px 12px; border-radius: 8px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; }
   .badge-done { background: #dcfce7; color: #166534; }
   .badge-progress { background: #fef3c7; color: #92400e; }
   .badge-backlog { background: #f1f5f9; color: #475569; }
@@ -132,11 +133,11 @@ export async function POST(req: Request) {
 
   /* Button CTA */
   .btn-wrap { text-align: center; margin: 40px 0 20px; }
-  .btn { display: inline-block; background-color: #10b981; color: #ffffff; padding: 16px 32px; font-size: 13px; font-weight: 700; text-decoration: none; border-radius: 8px; letter-spacing: 0.05em; text-transform: uppercase; }
+  .btn { display: inline-block; background-color: #3b82f6; background-image: linear-gradient(135deg, #2563eb 0%, #3b82f6 100%); color: #ffffff; padding: 18px 36px; font-size: 15px; font-weight: 800; text-decoration: none; border-radius: 12px; letter-spacing: 0.05em; text-transform: uppercase; box-shadow: 0 4px 12px rgba(37,99,235,0.3); }
 
   /* Footer */
-  .footer { background-color: #1e3a8a; padding: 32px 40px; color: #bfdbfe; font-size: 12px; line-height: 1.6; text-align: center; border-top: 1px solid #1e40af; }
-  .no-data { text-align: center; padding: 32px; color: #94a3b8; font-size: 13px; font-style: italic; }
+  .footer { background-color: #f8fafc; padding: 32px 40px; color: #64748b; font-size: 13px; line-height: 1.6; text-align: center; border-top: 2px dashed #f1f5f9; }
+  .no-data { text-align: center; padding: 40px; color: #94a3b8; font-size: 14px; font-style: italic; background: #f8fafc; border-radius: 16px; border: 2px dashed #e2e8f0; }
 </style>
 </head>
 <body>
@@ -144,8 +145,9 @@ export async function POST(req: Request) {
 
   <!-- HEADER -->
   <div class="header">
-    <div class="header-brand">&#9881; IT PCBA Management Engine</div>
-    <h1>IT Operations Performance Report</h1>
+    <div class="header-brand">&#9881; IT PCBA Management</div>
+    <img src="cid:top-illustration" class="header-image" alt="IT Dashboard Illustration" />
+    <h1>IT Operations Performance</h1>
     <p>Automated Digital Overview &bull; ${dateStr}</p>
   </div>
 
@@ -154,14 +156,14 @@ export async function POST(req: Request) {
 
     <!-- FORMAL INTRO -->
     <div class="intro">
-      <strong>To: General Management & Directorate</strong>
-      Please find enclosed the comprehensive daily IT Operations metrics. This digitally synthesized dashboard reflects our systemic performance, tracking helpdesk resolution velocity, infrastructure project milestones, and real-time operational manpower measured at the strict <strong>06:30 interval cutoff</strong>.
+      <strong>👋 Greetings to General Management,</strong>
+      Please find enclosed the comprehensive daily IT Operations metrics. This digitally synthesized & animated dashboard reflects our systemic performance, tracking helpdesk resolution velocity, infrastructure project milestones, and real-time operational manpower measured accurately at the strict <strong>06:30 interval cutoff.</strong>
       <br><br>
-      Our commitment to seamless, robust IT support is reflected in the automated aggregates below.
+      Our commitment to seamless, robust IT support is vividly reflected in the automated aggregates below.
     </div>
 
     <!-- KPI DASHBOARD SIMULATION -->
-    <h2 class="section-title">Performance Metrics Dashboard</h2>
+    <h2 class="section-title">📊 Performance Metrics Dashboard</h2>
     <table class="kpi-table" cellpadding="0" cellspacing="0">
       <tr>
         <td class="kpi-card">
@@ -232,7 +234,7 @@ export async function POST(req: Request) {
     </table>
 
     <!-- TICKETS TABLE -->
-    <h2 class="section-title">Latest Helpdesk Engagements</h2>
+    <h2 class="section-title">🎟️ Latest Helpdesk Engagements</h2>
     <div class="data-table-wrap">
       ${data.tickets.recent && data.tickets.recent.length > 0 ? `
       <table class="data-table">
@@ -259,7 +261,7 @@ export async function POST(req: Request) {
     </div>
 
     <!-- PROJECTS TABLE -->
-    <h2 class="section-title">Active Weekly Projects</h2>
+    <h2 class="section-title">🚀 Active Weekly Projects</h2>
     <div class="data-table-wrap">
       ${data.projects.list && data.projects.list.length > 0 ? `
       <table class="data-table">
@@ -291,7 +293,7 @@ export async function POST(req: Request) {
 
     <!-- BUTTON CTA -->
     <div class="btn-wrap">
-      <a href="http://10.0.2.36:3002" class="btn">Access Full Dashboard</a>
+      <a href="http://113.212.162.101:3003/" class="btn">🚀 Access Full Dashboard</a>
     </div>
 
   </div>
@@ -310,10 +312,11 @@ export async function POST(req: Request) {
     const htmlBody = juice(rawHtml);
 
     // 6. Send the email
+    const path = require('path');
     const info = await transporter.sendMail({
       from: '"IT PCBA System" <' + SMTP_USER + '>',
       to: toEmails.join(', '),
-      subject: `IT Daily Operations Report - ${today}`,
+      subject: `IT Daily Operations Report - ${today} 🎉`,
       html: htmlBody,
       attachments: [
         {
@@ -321,6 +324,11 @@ export async function POST(req: Request) {
           content: pdfBuffer,
           contentType: 'application/pdf',
         },
+        {
+          filename: 'it_header.png',
+          path: path.join(process.cwd(), 'public', 'it_header.png'),
+          cid: 'top-illustration'
+        }
       ],
     });
 
