@@ -101,7 +101,12 @@ export async function getReportData(date: string) {
     shift2: attRows.filter((a: any) => a.shift?.includes('Shift 2') && a.status !== 'Absent').length,
     shift3: attRows.filter((a: any) => a.shift?.includes('Shift 3') && a.status !== 'Absent').length,
     shiftNormal: attRows.filter((a: any) => a.shift?.includes('Normal') && a.status !== 'Absent').length,
-    records: attRows.filter((a: any) => !['Off', 'Leave'].includes(a.shift)).map((a: any) => ({ name: a.member_name, shift: a.shift })),
+    records: attRows.filter((a: any) => !['Off', 'Leave'].includes(a.shift)).map((a: any) => ({ name: a.member_name, shift: a.shift })).sort((a: any, b: any) => {
+      const order = ['Aditya Bayu Pratama', 'Rudi Yanto', 'Rosal Sangkut Ade Pio', 'Mozha Montoya', 'Arya Suryadi', 'Abdillah'];
+      const rankA = order.indexOf(a.name) === -1 ? 999 : order.indexOf(a.name);
+      const rankB = order.indexOf(b.name) === -1 ? 999 : order.indexOf(b.name);
+      return rankA - rankB;
+    }),
   };
   
   attStats.present = attStats.shift1 + attStats.shift2 + attStats.shift3 + attStats.shiftNormal;
