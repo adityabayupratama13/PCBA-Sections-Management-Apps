@@ -146,7 +146,6 @@ export async function POST(req: Request) {
   <!-- HEADER -->
   <div class="header">
     <div class="header-brand">&#9881; IT PCBA Management</div>
-    <img src="cid:top-illustration" class="header-image" alt="IT Dashboard Illustration" />
     <h1>IT Operations Performance</h1>
     <p>Automated Digital Overview &bull; ${dateStr}</p>
   </div>
@@ -156,14 +155,14 @@ export async function POST(req: Request) {
 
     <!-- FORMAL INTRO -->
     <div class="intro">
-      <strong>👋 Greetings to General Management,</strong>
-      Please find enclosed the comprehensive daily IT Operations metrics. This digitally synthesized & animated dashboard reflects our systemic performance, tracking helpdesk resolution velocity, infrastructure project milestones, and real-time operational manpower measured accurately at the strict <strong>06:30 interval cutoff.</strong>
+      <strong>To: General Management & Directorate</strong>
+      Please find enclosed the comprehensive daily IT Operations metrics. This digitally synthesized dashboard reflects our systemic performance, tracking helpdesk resolution velocity, infrastructure project milestones, and real-time operational manpower measured accurately at the strict <strong>06:30 interval cutoff.</strong>
       <br><br>
-      Our commitment to seamless, robust IT support is vividly reflected in the automated aggregates below.
+      Our commitment to seamless, robust IT support is reflected in the automated aggregates below.
     </div>
 
     <!-- KPI DASHBOARD SIMULATION -->
-    <h2 class="section-title">📊 Performance Metrics Dashboard</h2>
+    <h2 class="section-title">Performance Metrics Dashboard</h2>
     <table class="kpi-table" cellpadding="0" cellspacing="0">
       <tr>
         <td class="kpi-card">
@@ -234,7 +233,7 @@ export async function POST(req: Request) {
     </table>
 
     <!-- TICKETS TABLE -->
-    <h2 class="section-title">🎟️ Latest Helpdesk Engagements</h2>
+    <h2 class="section-title">Latest Helpdesk Engagements</h2>
     <div class="data-table-wrap">
       ${data.tickets.recent && data.tickets.recent.length > 0 ? `
       <table class="data-table">
@@ -261,7 +260,7 @@ export async function POST(req: Request) {
     </div>
 
     <!-- PROJECTS TABLE -->
-    <h2 class="section-title">🚀 Active Weekly Projects</h2>
+    <h2 class="section-title">Active Weekly Projects</h2>
     <div class="data-table-wrap">
       ${data.projects.list && data.projects.list.length > 0 ? `
       <table class="data-table">
@@ -293,7 +292,7 @@ export async function POST(req: Request) {
 
     <!-- BUTTON CTA -->
     <div class="btn-wrap">
-      <a href="http://113.212.162.101:3003/" class="btn">🚀 Access Full Dashboard</a>
+      <a href="http://113.212.162.101:3002/" class="btn">Access Full Dashboard</a>
     </div>
 
   </div>
@@ -312,22 +311,16 @@ export async function POST(req: Request) {
     const htmlBody = juice(rawHtml);
 
     // 6. Send the email
-    const path = require('path');
     const info = await transporter.sendMail({
       from: '"IT PCBA System" <' + SMTP_USER + '>',
       to: toEmails.join(', '),
-      subject: `IT Daily Operations Report - ${today} 🎉`,
+      subject: `IT Daily Operations Report - ${today}`,
       html: htmlBody,
       attachments: [
         {
           filename: `IT_Daily_Report_${today}.pdf`,
           content: pdfBuffer,
           contentType: 'application/pdf',
-        },
-        {
-          filename: 'it_header.png',
-          path: path.join(process.cwd(), 'public', 'it_header.png'),
-          cid: 'top-illustration'
         }
       ],
     });
