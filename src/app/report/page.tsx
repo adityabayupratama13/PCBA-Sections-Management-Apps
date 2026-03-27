@@ -1,13 +1,72 @@
 'use client';
 import { useState } from 'react';
-import { FileText, Calendar, Download, RefreshCw, BarChart3, Clock, Users, ShieldAlert, CheckCircle2 } from 'lucide-react';
+import { FileText, Calendar, Download, RefreshCw, BarChart3, Clock, Users, ShieldAlert, CheckCircle2, Settings, Send, X, Plus, Mail } from 'lucide-react';
 import { generateDailyReport } from '@/lib/generateReport';
 import { toast } from 'sonner';
+import { Modal } from '@/components/Modal';
 
 export default function ReportPage() {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  
+  const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
+  const [emailList, setEmailList] = useState<string[]>([]);
+  const [newEmail, setNewEmail] = useState('');
+  const [isSavingEmails, setIsSavingEmails] = useState(false);
+  const [isSendingReport, setIsSendingReport] = useState(false);
+
+  // Load emails configured
+  const fetchEmails = async () => {
+    try {
+      const res = await fetch('/api/settings');
+      const json = await res.json();
+      if (json.report_emails && Array.isArray(json.report_emails)) {
+        setEmailList(json.report_emails);
+      }
+    } catch(e) { console.error(e); }
+  };
+
+  const handleSaveEmails = async () => {
+    setIsSavingEmails(true);
+    try {
+       await fetch('/api/settings', {
+         method: 'PUT',
+         headers: { 'Content-Type': 'application/json' },
+         body: JSON.stringify({ report_emails: emailList })
+       });
+       toast.success('Recipient list saved successfully');
+       setIsEmailModalOpen(false);
+    } catch(e) {
+       toast.error('Failed to save settings');
+    } finally {
+       setIsSavingEmails(false);
+    }
+  };
+
+  const addEmail = () => {
+    if (!newEmail || !newEmail.includes('@')) return toast.error('Valid email required');
+    if (emailList.includes(newEmail)) return toast.error('Email already in list');
+    setEmailList([...emailList, newEmail]);
+    setNewEmail('');
+  };
+
+  const currentEmails = emailList.length > 0 ? emailList : ['aditya@giken.co.id'];
+
+  const handleDirectDispatch = async () => {
+    setIsSendingReport(true);
+    toast.info('Synthesizing and transmitting report...');
+    try {
+      const res = await fetch('/api/cron/send-report', { method: 'POST' });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Failed to dispatch email');
+      toast.success('Email successfully routed to ' + currentEmails.length + ' recipients!');
+    } catch(e: any) {
+      toast.error(e.message || 'Error transmitting email');
+    } finally {
+      setIsSendingReport(false);
+    }
+  };
 
   const fetchReportData = async () => {
     setLoading(true);
@@ -45,21 +104,41 @@ export default function ReportPage() {
             <h1 className="text-3xl font-bold text-foreground">Daily Report</h1>
             <p className="text-muted-foreground mt-1">Generate comprehensive PDF reports of IT Operations.</p>
           </div>
-          <div className="flex bg-surface p-1 rounded-xl border border-border shadow-sm">
-            <input 
-              type="date" 
-              value={date} 
-              onChange={e => setDate(e.target.value)}
-              className="px-4 py-2 bg-transparent text-sm font-medium outline-none text-foreground color-scheme-dark" 
-            />
-            <button 
-              onClick={fetchReportData}
-              disabled={loading}
-              className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 text-sm font-medium ml-1 transition-colors"
-            >
-              {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <BarChart3 className="w-4 h-4" />}
-              Fetch Data
-            </button>
+          
+          <div className="flex flex-col sm:flex-row items-end sm:items-center gap-3">
+            <div className="flex gap-2">
+              <button 
+                onClick={() => { fetchEmails(); setIsEmailModalOpen(true); }}
+                className="flex items-center gap-2 px-4 py-2 bg-surface text-foreground rounded-xl border border-border hover:bg-surface-hover text-sm font-medium transition-colors shadow-sm"
+              >
+                <Settings className="w-4 h-4" /> Recipients
+              </button>
+              <button 
+                onClick={handleDirectDispatch}
+                disabled={isSendingReport}
+                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl shadow-md hover:shadow-lg hover:-translate-y-0.5 text-sm font-medium transition-all disabled:opacity-50 disabled:hover:translate-y-0 disabled:shadow-sm"
+              >
+                {isSendingReport ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                Mail Report
+              </button>
+            </div>
+
+            <div className="flex bg-surface p-1 rounded-xl border border-border shadow-sm">
+              <input 
+                type="date" 
+                value={date} 
+                onChange={e => setDate(e.target.value)}
+                className="px-4 py-2 bg-transparent text-sm font-medium outline-none text-foreground color-scheme-dark" 
+              />
+              <button 
+                onClick={fetchReportData}
+                disabled={loading}
+                className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 text-sm font-medium ml-1 transition-colors"
+              >
+                {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <BarChart3 className="w-4 h-4" />}
+                Fetch Data
+              </button>
+            </div>
           </div>
         </div>
 
@@ -150,7 +229,51 @@ export default function ReportPage() {
           </div>
         )}
         
+        
       </div>
+
+      <Modal isOpen={isEmailModalOpen} onClose={() => setIsEmailModalOpen(false)} title="Mailing List Configuration">
+        <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">Add or remove exact email destinations for the automated Daily Report drop. Changes here map dynamically to the chron engine immediately.</p>
+          
+          <div className="flex gap-2">
+            <input 
+               type="email"
+               value={newEmail}
+               onChange={e => setNewEmail(e.target.value)} 
+               onKeyDown={e => e.key === 'Enter' && addEmail()}
+               placeholder="Add technical lead... (@giken.co.id)"
+               className="flex-1 px-4 py-2 bg-background border border-border rounded-lg text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50"
+            />
+            <button onClick={addEmail} className="px-4 py-2 bg-surface text-foreground border border-border rounded-lg hover:bg-surface-hover transition-colors">
+              <Plus className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div className="bg-background rounded-lg border border-border overflow-hidden max-h-60 overflow-y-auto">
+             {emailList.length === 0 && <div className="p-4 text-center text-sm text-muted-foreground font-medium">No custom targets. Inheriting default (aditya@giken).</div>}
+             {emailList.map((email, idx) => (
+                <div key={idx} className="flex justify-between items-center p-3 border-b border-border/50 last:border-0 hover:bg-surface/30">
+                  <div className="flex items-center gap-3">
+                    <Mail className="w-4 h-4 text-primary" />
+                    <span className="text-sm font-medium text-foreground">{email}</span>
+                  </div>
+                  <button onClick={() => setEmailList(emailList.filter(e => e !== email))} className="text-muted-foreground hover:text-destructive transition-colors">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+             ))}
+          </div>
+
+          <div className="flex justify-end pt-4 mt-2 border-t border-border">
+            <button onClick={handleSaveEmails} disabled={isSavingEmails} className="px-6 py-2.5 bg-primary text-primary-foreground text-sm font-medium rounded-xl hover:bg-primary/90 transition-colors shadow-sm ml-auto flex items-center gap-2">
+               {isSavingEmails && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
+               Save Routing Config
+            </button>
+          </div>
+        </div>
+      </Modal>
+
     </div>
   );
 }

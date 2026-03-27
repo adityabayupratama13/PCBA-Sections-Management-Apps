@@ -199,7 +199,7 @@ export async function generateDailyReport(data: any, reportDate: string) {
     styles: { fontSize: 9 },
     alternateRowStyles: { fillColor: colors.bgLight },
     margin: { left: margin, right: margin },
-    pageBreak: 'avoid',
+    pageBreak: 'auto',
     didParseCell: function(celldata) {
       if (celldata.section === 'body' && celldata.column.index === 2) {
         const val = celldata.cell.raw;
