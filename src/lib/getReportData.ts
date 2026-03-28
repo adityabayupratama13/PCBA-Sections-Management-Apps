@@ -120,7 +120,20 @@ export async function getReportData(date: string) {
     active: activeProjects.filter((p: any) => p.status === 'Active').length,
     onHold: activeProjects.filter((p: any) => p.status === 'On Hold').length,
     completed: activeProjects.filter((p: any) => p.status === 'Completed').length,
-    list: activeProjects.map((p: any) => ({ name: p.name, pic: p.pic, status: p.status, progress: p.progress, end_date: p.end_date })),
+    list: activeProjects.map((p: any) => {
+      let autoProgress = p.progress || 0;
+      try {
+        const linkedTasks = JSON.parse(p.linked_tasks || '[]');
+        if (linkedTasks && linkedTasks.length > 0) {
+          const linked = allTasks.filter((t: any) => linkedTasks.includes(t.id));
+          if (linked.length > 0) {
+            const doneCount = linked.filter((t: any) => t.status === 'Done').length;
+            autoProgress = Math.round((doneCount / linked.length) * 100);
+          }
+        }
+      } catch (e) {}
+      return { name: p.name, pic: p.pic, status: p.status, progress: autoProgress, end_date: p.end_date };
+    }),
   };
 
   // ── Overtime ──────────────────────────────────────────────
