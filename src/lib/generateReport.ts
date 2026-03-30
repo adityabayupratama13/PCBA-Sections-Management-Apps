@@ -212,10 +212,28 @@ export async function generateDailyReport(data: any, reportDate: string) {
   currentY = (doc as any).lastAutoTable.finalY + 15;
 
   // Tasks
-  const taskRecords = data.tasks.totalCreatedToday > 0 ? (data as any).tasks?.byAssignee || [] : [];
-  // Since we don't have task details arrays in the API response yet, we'll skip the task detail table 
-  // or we can add it later if the API provides data.tasks.recent. 
-  // For now, let's keep the executive summary for Tasks intact.
+  const taskRecords = data.tasks.recent && data.tasks.recent.length ? data.tasks.recent : [{ id: '-', title: 'No active tasks', status: '-', priority: '-', assignee: '-' }];
+  addSectionTitle("New Tasks (06:30 Cut-off)", colors.success);
+  autoTable(doc, {
+    startY: currentY,
+    head: [['ID', 'Title', 'Assignee', 'Status', 'Priority']],
+    body: taskRecords.map((t: any) => [t.id, t.title, t.assignee, t.status, t.priority]),
+    theme: 'grid',
+    headStyles: { fillColor: colors.success, textColor: 255 },
+    styles: { fontSize: 9 },
+    alternateRowStyles: { fillColor: colors.bgLight },
+    margin: { left: margin, right: margin },
+    pageBreak: 'auto',
+    didParseCell: function(celldata) {
+      if (celldata.section === 'body' && celldata.column.index === 3) {
+        const val = celldata.cell.raw;
+        if (val === 'Done') celldata.cell.styles.textColor = [16, 185, 129];
+        else if (val === 'In Progress' || val === 'Review') celldata.cell.styles.textColor = [245, 158, 11];
+        else if (val === 'Backlog') celldata.cell.styles.textColor = [239, 68, 68];
+      }
+    }
+  });
+  currentY = (doc as any).lastAutoTable.finalY + 15;
 
   // Attendance
   const recordsAtt = data.attendance.records.length ? data.attendance.records : [{ name: '-', shift: '-' }];

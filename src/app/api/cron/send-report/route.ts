@@ -259,6 +259,35 @@ export async function POST(req: Request) {
       ` : `<div class="no-data">System logs indicate zero outstanding ticket creations today.</div>`}
     </div>
 
+    <!-- TASKS TABLE -->
+    <h2 class="section-title">Latest Task Delegations</h2>
+    <div class="data-table-wrap">
+      ${data.tasks.recent && data.tasks.recent.length > 0 ? `
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Task ID</th>
+            <th>Subject</th>
+            <th>Assignee</th>
+            <th>Priority</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${data.tasks.recent.map((t: any) => `
+          <tr>
+            <td class="td-id">TSK-${t.id}</td>
+            <td class="td-title">${t.title}</td>
+            <td><strong>${t.assignee}</strong></td>
+            <td><span class="badge badge-${t.priority?.toLowerCase() || 'medium'}">${t.priority || 'Medium'}</span></td>
+            <td><span class="badge badge-${t.status === 'Done' ? 'done' : t.status === 'Backlog' ? 'backlog' : 'progress'}">${t.status}</span></td>
+          </tr>
+          `).join('')}
+        </tbody>
+      </table>
+      ` : `<div class="no-data">No new task delegations logged for today.</div>`}
+    </div>
+
     <!-- PROJECTS TABLE -->
     <h2 class="section-title">Active Weekly Projects</h2>
     <div class="data-table-wrap">

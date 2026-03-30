@@ -62,6 +62,7 @@ export async function getReportData(date: string) {
       tasksToday.forEach((t: any) => { if (t.assignee) map[t.assignee] = (map[t.assignee] || 0) + 1; });
       return Object.entries(map).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([name, count]) => ({ name, count }));
     })(),
+    recent: tasksToday.map((t: any) => ({ id: t.id, title: t.title, status: t.status, priority: t.priority || 'Medium', assignee: t.assignee || 'Unassigned' })),
   };
 
   // ── Team / Members / Manpower ─────────────────────────────

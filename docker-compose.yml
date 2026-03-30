@@ -28,11 +28,15 @@ services:
     environment:
       - NODE_ENV=development
       - CHOKIDAR_USEPOLLING=true
+      - MYSQL_HOST=giken-mysql
+      - MYSQL_USER=root
+      - MYSQL_PASSWORD=root
+      - MYSQL_DATABASE=hardware
     ports:
       - "3001:3000"
     restart: unless-stopped
     networks:
-      - giken-network
+      - new_giken-net
 
   # ============================================
   # APP 3 - IT PCBA Management (Port 3002)
@@ -112,6 +116,8 @@ networks:
   giken-network:
     driver: bridge
   docker_giken-network:
+    external: true
+  new_giken-net:
     external: true
 
 volumes:
