@@ -5,7 +5,7 @@ import { getDb } from '@/lib/db';
 
 export async function GET() {
   try {
-    const db = getDb();
+    const db = getDb('CENTRAL');
     const [rows] = await db.query(
       `SELECT * FROM positions ORDER BY
         CASE level
@@ -24,7 +24,7 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const db = getDb();
+  const db = getDb('CENTRAL');
 
   const [existing] = await db.execute('SELECT id FROM positions WHERE LOWER(name) = LOWER(?)', [body.name]) as any;
   if (existing[0]) return NextResponse.json({ error: 'Position name already exists' }, { status: 409 });
@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
 
 export async function PUT(req: NextRequest) {
   const body = await req.json();
-  const db = getDb();
+  const db = getDb('CENTRAL');
 
   const [existing] = await db.execute('SELECT id FROM positions WHERE LOWER(name) = LOWER(?) AND id != ?', [body.name, body.id]) as any;
   if (existing[0]) return NextResponse.json({ error: 'Position name already exists' }, { status: 409 });
@@ -63,7 +63,7 @@ export async function DELETE(req: NextRequest) {
   const id = searchParams.get('id');
   if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
 
-  const db = getDb();
+  const db = getDb('CENTRAL');
   const [rows] = await db.execute('SELECT name FROM positions WHERE id = ?', [id]) as any;
   const pos = rows[0] as { name: string } | undefined;
   if (!pos) return NextResponse.json({ error: 'Position not found' }, { status: 404 });

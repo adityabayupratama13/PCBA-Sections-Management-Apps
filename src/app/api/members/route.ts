@@ -6,14 +6,14 @@ import { getDb, toMysqlDatetime } from '@/lib/db';
 const MASTER_BADGE = '36443';
 
 export async function GET() {
-  const db = getDb();
+  const db = getDb('CENTRAL');
   const [rows] = await db.query('SELECT * FROM members ORDER BY id') as any;
   return NextResponse.json(rows);
 }
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const db = getDb();
+  const db = getDb('CENTRAL');
 
   if (body.action === 'login') {
     const [rows] = await db.execute(
@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
 
 export async function PUT(req: NextRequest) {
   const body = await req.json();
-  const db = getDb();
+  const db = getDb('CENTRAL');
   try {
     if (body.badge === MASTER_BADGE || body.id === 0) {
       const [existRows] = await db.execute('SELECT id FROM members WHERE badge = ?', [MASTER_BADGE]) as any;
@@ -103,7 +103,7 @@ export async function PUT(req: NextRequest) {
 export async function DELETE(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const id = searchParams.get('id');
-  const db = getDb();
+  const db = getDb('CENTRAL');
   const [rows] = await db.execute('SELECT name FROM members WHERE id=?', [Number(id)]) as any;
   const member = rows[0] as { name: string } | undefined;
   await db.execute('DELETE FROM members WHERE id=?', [Number(id)]);

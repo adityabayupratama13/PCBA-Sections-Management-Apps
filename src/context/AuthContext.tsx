@@ -2,6 +2,33 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 
+if (typeof window !== 'undefined') {
+  const originalFetch = window.fetch;
+  window.fetch = async (...args) => {
+    let [resource, config] = args;
+    
+    // Attempt to inject x-section if it's an API request
+    if (typeof resource === 'string' && resource.startsWith('/api/')) {
+      let section = '';
+      try {
+        const stored = localStorage.getItem('it-mgt-user');
+        if (stored) {
+          section = JSON.parse(stored).division || '';
+        }
+      } catch { /* ignore */ }
+
+      if (section) {
+        config = config || {};
+        config.headers = {
+          ...config.headers,
+          'x-section': section
+        };
+      }
+    }
+    return originalFetch(resource, config);
+  };
+}
+
 export interface Member {
   id: number;
   name: string;
