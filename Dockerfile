@@ -10,6 +10,6 @@ COPY . .
 
 RUN npm run build
 
-EXPOSE 3002
+EXPOSE 3004
 
-CMD ["npm", "start", "--", "-p", "3002"]
+CMD ["npm", "start", "--", "-p", "3004"]

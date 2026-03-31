@@ -56,7 +56,7 @@ services:
       - DB_PATH=/data
       - MYSQL_HOST=giken-mysql
     ports:
-      - "3002:3002"
+      - "3004:3004"
     restart: unless-stopped
     networks:
       - docker_giken-network
@@ -122,4 +122,4 @@ networks:
 
 volumes:
   mysql-data:
-  it-db-data:
+  pcba-db-data:
