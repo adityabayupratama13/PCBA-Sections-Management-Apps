@@ -54,10 +54,10 @@ export default function LoginPage() {
         {/* Middle Content */}
         <div className="relative z-10 flex-1 flex flex-col justify-center mt-12 lg:mt-0 max-w-xl">
           <h1 className="text-4xl lg:text-5xl font-bold text-white leading-tight mb-6">
-            IT Management System
+            PCBA Sections Management System
           </h1>
           <p className="text-lg text-slate-300 mb-10 leading-relaxed">
-            Integrated platform designed specifically for managing IT Department operations, tasks, attendance, and assets at GIKEN.
+            Integrated platform designed specifically for managing PCBA Sections operations, tasks, attendance, and assets at GIKEN.
           </p>
 
           <div className="space-y-4">

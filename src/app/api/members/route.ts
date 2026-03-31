@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
 
     const [result] = await db.execute(
       'INSERT INTO members (name, badge, role, division, email, phone, password, status, grade, join_date, finish_date, employment_status, contract_duration, created_at, photo_url, member_type) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [body.name, body.badge, body.role || 'IT Support', body.division || 'IT Department',
+      [body.name, body.badge, body.role || 'Staff', body.division || 'Engineering',
        body.email || '', body.phone || '', body.password || 'Password123', body.status || 'Active',
        body.grade || '', body.join_date || '', body.finish_date || '', body.employment_status || 'Permanent',
        body.contract_duration || 0, toMysqlDatetime(body.created_at), body.photo_url || null,

@@ -5,7 +5,7 @@ const dbConfig = {
   host: process.env.MYSQL_HOST || 'giken-mysql',
   user: process.env.MYSQL_USER || 'root',
   password: process.env.MYSQL_PASSWORD || 'root',
-  database: process.env.MYSQL_DATABASE || 'giken_db',
+  database: process.env.MYSQL_DATABASE || 'pcba_engineering_db',
   port: parseInt(process.env.MYSQL_PORT || '3306')
 };
 

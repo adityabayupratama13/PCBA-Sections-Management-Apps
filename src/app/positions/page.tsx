@@ -25,7 +25,7 @@ const LEVEL_COLORS: Record<string, string> = {
   Staff:      'bg-orange-500/15 text-orange-400 border-orange-500/25',
 };
 
-const DIVISIONS = ['Management', 'Software Dev', 'Infrastructure', 'Helpdesk', 'IT Department', 'Hardware'];
+const DIVISIONS = ['Engineering', 'Technician SMT', 'Production SMT-A', 'Production SMT-B', 'Production SMT-C', 'PMC', 'Finish Goods', 'MI Second Floor', 'MI Grooming Garment', 'MI Denso Ryoyo', 'Dipping Technician', 'PGA-HRE', 'MI Wiseally', 'MI Bluetti'];
 
 export default function PositionsPage() {
   const { data: positions, loading, create, update, remove } = useApi<Position>('positions');

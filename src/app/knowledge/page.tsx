@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Plus, Search, BookOpen, Edit3, Trash2, Save, Clock, User, ChevronRight, Hash } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Plus, Search, BookOpen, Edit3, Trash2, Save, Clock, User, ChevronRight, Hash, Image as ImageIcon, Link as LinkIcon, Video as VideoIcon } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 
@@ -30,6 +30,8 @@ export default function KnowledgeBasePage() {
   const [editContent, setEditContent] = useState('');
   const [editCategory, setEditCategory] = useState('General');
   const [editTags, setEditTags] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const CATEGORIES = ['General', 'Hardware', 'Software', 'Network', 'Policies', 'Troubleshooting'];
 
@@ -135,6 +137,40 @@ export default function KnowledgeBasePage() {
     }
   };
 
+  // Upload file helper
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setIsUploading(true);
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        const url = data.url;
+        const isVideo = file.type.startsWith('video/');
+        const markdownFormat = isVideo ? `\n[Video](${url})\n` : `\n![${file.name}](${url})\n`;
+        
+        setEditContent(prev => prev + markdownFormat);
+        toast.success(isVideo ? 'Video uploaded!' : 'Image uploaded!');
+      } else {
+        toast.error('Upload failed!');
+      }
+    } catch (error) {
+       toast.error('Error during upload');
+    } finally {
+       setIsUploading(false);
+       if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
   // Simple Markdown Parser for Preview
   const renderMarkdown = (text: string) => {
     if (!text) return null;
@@ -144,17 +180,58 @@ export default function KnowledgeBasePage() {
       if (line.startsWith('### ')) return <h3 key={i} className="text-xl font-medium mb-2 mt-4 text-foreground">{line.substring(4)}</h3>;
       if (line.startsWith('- ')) return <li key={i} className="ml-4 mb-1 list-disc text-muted-foreground">{line.substring(2)}</li>;
       if (line.startsWith('> ')) return <blockquote key={i} className="border-l-4 border-primary pl-4 py-1 my-3 bg-primary/5 text-muted-foreground italic rounded-r-lg">{line.substring(2)}</blockquote>;
-      if (line.startsWith('\`\`\`')) return <div key={i} className="bg-black/50 p-3 rounded-lg my-3 font-mono text-sm text-green-400 overflow-x-auto">{line.replace(/\`/g, '') || ' '}</div>;
+      if (line.startsWith('```')) return <div key={i} className="bg-black/50 p-3 rounded-lg my-3 font-mono text-sm text-green-400 overflow-x-auto">{line.replace(/`/g, '') || ' '}</div>;
       if (line.trim() === '') return <div key={i} className="h-4"></div>;
       
-      // Inline formatting
-      const formatted = line;
-      // Bold
-      const boldParts = formatted.split(/\*\*(.*?)\*\*/g);
+      // Auto-Embed YouTube links
+      const ytMatch = line.match(/(?:(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/))([a-zA-Z0-9_-]{11})/i);
+      if (ytMatch && ytMatch[1]) {
+        return (
+          <div key={i} className="my-6 aspect-video max-w-3xl rounded-xl overflow-hidden shadow-lg border border-border/50 relative bg-black/50">
+            <iframe className="absolute inset-0 w-full h-full" src={`https://www.youtube.com/embed/${ytMatch[1]}`} allowFullScreen frameBorder="0"></iframe>
+          </div>
+        );
+      }
+
+      // Inline formatting (Bold, Images, Links, Inline-Video)
+      const parseInline = (content: string, keyPrefix: string) => {
+        // split by Bold
+        const boldParts = content.split(/\*\*(.*?)\*\*/g);
+        return boldParts.map((part, idx) => {
+          if (idx % 2 === 1) return <strong key={`${keyPrefix}-${idx}`} className="text-foreground">{part}</strong>;
+          
+          // Next split by Markdown Link / Image parsing:  [text](url) or ![alt](url)
+          const linkRegex = /(!?)\[(.*?)\]\((.*?)\)/g;
+          const pieces = [];
+          let lastIdx = 0;
+          let match;
+          while ((match = linkRegex.exec(part)) !== null) {
+            // Push preceding plain text
+            if (match.index > lastIdx) pieces.push(part.substring(lastIdx, match.index));
+            lastIdx = match.index + match[0].length;
+            
+            const isImage = match[1] === '!';
+            const linkText = match[2];
+            const url = match[3];
+
+            if (isImage) {
+              pieces.push(<div key={`${keyPrefix}-${idx}-${lastIdx}`} className="my-4"><img src={url} alt={linkText} className="max-w-full md:max-w-3xl rounded-xl border border-border pointer-events-none" /></div>);
+            } else if (url.match(/\.(mp4|webm|ogg)$/i)) {
+              pieces.push(<div key={`${keyPrefix}-${idx}-${lastIdx}`} className="my-4"><video controls src={url} className="max-w-full md:max-w-3xl rounded-xl border border-border shadow-md aspect-video bg-black/50" /></div>);
+            } else {
+              pieces.push(<a key={`${keyPrefix}-${idx}-${lastIdx}`} href={url} target="_blank" rel="noopener noreferrer" className="text-primary font-medium hover:underline hover:text-primary/80 transition-colors inline-block break-words">{linkText}</a>);
+            }
+          }
+          if (lastIdx < part.length) pieces.push(part.substring(lastIdx));
+          
+          return pieces.length === 1 ? pieces[0] : pieces;
+        });
+      };
+
       return (
-        <p key={i} className="mb-2 text-muted-foreground leading-relaxed">
-          {boldParts.map((part, index) => index % 2 === 1 ? <strong key={index} className="text-foreground">{part}</strong> : part)}
-        </p>
+        <div key={i} className="mb-2 text-muted-foreground/90 leading-relaxed text-[15px]">
+          {parseInline(line, String(i))}
+        </div>
       );
     });
   };
@@ -281,6 +358,22 @@ export default function KnowledgeBasePage() {
                       className="bg-transparent border-none focus:outline-none flex-1 text-foreground placeholder:text-muted-foreground/50"
                     />
                   </div>
+                </div>
+
+                {/* Editor Toolbar */}
+                <div className="flex items-center gap-2 border border-border rounded-lg bg-surface/50 p-2 overflow-x-auto custom-scrollbar">
+                  <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept="image/*,video/*" className="hidden" />
+                  <button onClick={() => fileInputRef.current?.click()} disabled={isUploading} className="flex items-center gap-2 px-3 py-1.5 hover:bg-surface rounded-md text-muted-foreground hover:text-foreground transition-colors text-sm font-medium">
+                     {isUploading ? <div className="w-4 h-4 rounded-full border-2 border-primary border-t-transparent animate-spin"/> : <ImageIcon className="w-4 h-4"/>}
+                     Insert Local Media
+                  </button>
+                  <div className="w-px h-4 bg-border mx-2"></div>
+                  <button onClick={() => setEditContent(p => p + '\n[Custom text](https://website.com)')} className="flex items-center gap-2 px-3 py-1.5 hover:bg-surface rounded-md text-muted-foreground hover:text-foreground transition-colors text-sm font-medium">
+                     <LinkIcon className="w-4 h-4"/> Link
+                  </button>
+                  <button onClick={() => setEditContent(p => p + '\nhttps://youtube.com/watch?v=...')} className="flex items-center gap-2 px-3 py-1.5 hover:bg-surface rounded-md text-muted-foreground hover:text-foreground transition-colors text-sm font-medium">
+                     <VideoIcon className="w-4 h-4"/> YouTube Link
+                  </button>
                 </div>
 
                 <div className="flex gap-6 h-full min-h-[500px]">

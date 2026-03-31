@@ -115,7 +115,7 @@ export default function AutomationsPage() {
         <div className="text-center space-y-4">
           <Settings className="w-16 h-16 text-muted-foreground opacity-20 mx-auto" />
           <h2 className="text-2xl font-bold text-foreground">Access Restricted</h2>
-          <p className="text-muted-foreground">Automations Engine is only available to IT Management and Supervisors.</p>
+          <p className="text-muted-foreground">Automations Engine is only available to PCBA Sections Management and Supervisors.</p>
         </div>
       </div>
     );

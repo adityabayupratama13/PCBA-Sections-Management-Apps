@@ -10,7 +10,7 @@ export function getDb(): mysql.Pool {
       port: 3306,
       user: 'root',
       password: 'root',
-      database: 'giken_db',
+      database: 'pcba_engineering_db',
       waitForConnections: true,
       connectionLimit: 10,
       queueLimit: 0,

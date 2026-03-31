@@ -19,8 +19,8 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "IT Management Dashboard",
-  description: "Internal dashboard for IT department operations",
+  title: "PCBA Sections Management Dashboard",
+  description: "Internal dashboard for PCBA operations",
 };
 
 export default function RootLayout({

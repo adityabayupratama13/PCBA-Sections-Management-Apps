@@ -42,14 +42,14 @@ services:
   # APP 3 - IT PCBA Management (Port 3002)
   # Auto-update: AKTIF (local path)
   # ============================================
-  it-pcba-management:
+  pcba-sections-management:
     build:
-      context: "C:\\Users\\SERVER\\Downloads\\IT"
-    container_name: it-pcba-management
+      context: "C:\\Users\\SERVER\\Downloads\\PCBA Section Management Apps"
+    container_name: pcba-sections-management
     volumes:
-      - "C:\\Users\\SERVER\\Downloads\\IT:/app"
+      - "C:\\Users\\SERVER\\Downloads\\PCBA Section Management Apps:/app"
       - /app/node_modules
-      - it-db-data:/data
+      - pcba-db-data:/data
     environment:
       - NODE_ENV=development
       - CHOKIDAR_USEPOLLING=true
@@ -86,7 +86,7 @@ services:
     container_name: giken-mysql
     environment:
       MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: giken_db
+      MYSQL_DATABASE: pcba_engineering_db
     ports:
       - "3306:3306"
     volumes:

@@ -71,7 +71,7 @@ export default function TicketsPage() {
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
-    doc.text('IT Management Dashboard', 14, 12);
+    doc.text('PCBA Sections Management Dashboard', 14, 12);
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
     doc.text('Help Desk Tickets Report', 14, 18);

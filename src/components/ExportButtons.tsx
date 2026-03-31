@@ -65,7 +65,7 @@ export function ExportButtons({ data, filename, columns }: ExportButtonsProps) {
       
       // Add title and date
       doc.setFontSize(14);
-      doc.text(`IT Management - ${filename}`, 14, 15);
+      doc.text(`PCBA Sections Management - ${filename}`, 14, 15);
       doc.setFontSize(10);
       doc.setTextColor(100);
       doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 25);

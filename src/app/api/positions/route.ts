@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
 
   const [result] = await db.execute(
     'INSERT INTO positions (name, division, level, description) VALUES (?, ?, ?, ?)',
-    [body.name, body.division || 'IT Department', body.level || 'Staff', body.description || '']
+    [body.name, body.division || 'Engineering', body.level || 'Staff', body.description || '']
   ) as any;
   await db.execute(
     'INSERT INTO audit_logs (action, module, details, user_name) VALUES (?, ?, ?, ?)',
