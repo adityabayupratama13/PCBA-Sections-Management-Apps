@@ -14,29 +14,28 @@ const SECTION_DB_MAP = {
   'Dipping Technician': 'pcba_dipping_tech_db',
   'PGA-HRE': 'pcba_pga_hre_db',
   'MI Wiseally': 'pcba_mi_wiseally_db',
-  'MI Bluetti': 'pcba_mi_bluetti_db'
+  'MI Bluetti': 'pcba_mi_bluetti_db',
+  'IT': 'pcba_it_db',
+  'NPI': 'pcba_npi_db',
+  'QA': 'pcba_qa_db'
 };
 
 const CENTRAL_DB = 'pcba_central_db';
 const SOURCE_DB = 'giken_db';
 
 const CENTRAL_TABLES = ['members', 'positions']; // These go to central DB
-const SECTION_TABLES = [
-  'tasks', 'tickets', 'daily_logs', 'audit_logs', 'rules', 
-  'knowledge', 'leaves', 'leave_balances', 'overtime', 'attendance', 'automations'
-]; // These go to every section DB
 
 async function cloneDatabase() {
   console.log('Connecting to MySQL...');
   const conn = await mysql.createConnection({
     host: 'localhost',
-    port: 3306, // Let's try 3306 locally, assuming port forwarding or running inside docker context wait!
-// The Node.js script runs on host machine. In docker-compose, mysql is exposed on 3306.
+    port: 3306,
     user: 'root',
     password: 'root'
   });
 
   try {
+    await conn.query('SET FOREIGN_KEY_CHECKS=0');
     // 1. Get CREATE TABLE scripts from SOURCE_DB
     const schemas = {};
     const [tables] = await conn.query(`SHOW TABLES FROM ${SOURCE_DB}`);
@@ -52,10 +51,7 @@ async function cloneDatabase() {
     await conn.query(`CREATE DATABASE IF NOT EXISTS ${CENTRAL_DB}`);
     for (const table of CENTRAL_TABLES) {
       if (schemas[table]) {
-        // Change table name if we wanted, but we just run the schema in the right DB context
         await conn.query(`CREATE TABLE IF NOT EXISTS ${CENTRAL_DB}.${table} ` + schemas[table].substring(schemas[table].indexOf('(')));
-        
-        // Copy data ONLY ONCE for members and positions from original engineering DB to central DB
         try {
             await conn.query(`INSERT IGNORE INTO ${CENTRAL_DB}.${table} SELECT * FROM ${SOURCE_DB}.${table}`);
             console.log(` - Migrated data for ${table} to central DB`);
@@ -65,14 +61,15 @@ async function cloneDatabase() {
       }
     }
 
-    // 3. Create Section DBs
+    // 3. Create Section DBs dynamically using all remaining tables
+    const sectionTables = Object.keys(schemas).filter(t => !CENTRAL_TABLES.includes(t));
     const sectionDbs = Object.values(SECTION_DB_MAP);
     for (const dbName of sectionDbs) {
-      if (dbName === SOURCE_DB) continue; // Skip engineering since it's the source
+      if (dbName === SOURCE_DB) continue; 
       console.log(`\nCreating Section DB: ${dbName}`);
       await conn.query(`CREATE DATABASE IF NOT EXISTS ${dbName}`);
       
-      for (const table of SECTION_TABLES) {
+      for (const table of sectionTables) {
         if (schemas[table]) {
           await conn.query(`CREATE TABLE IF NOT EXISTS ${dbName}.${table} ` + schemas[table].substring(schemas[table].indexOf('(')));
         }

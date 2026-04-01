@@ -2,15 +2,6 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { getDb, toMysqlDate } from '@/lib/db';
-import mysql from 'mysql2/promise';
-
-const otDbConfig = {
-  host: process.env.MYSQL_HOST || 'giken-mysql',
-  user: process.env.MYSQL_USER || 'root',
-  password: process.env.MYSQL_PASSWORD || 'root',
-  database: process.env.MYSQL_DATABASE || 'pcba_engineering_db',
-  port: parseInt(process.env.MYSQL_PORT || '3306'),
-};
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -130,10 +121,8 @@ export async function GET(req: NextRequest) {
     // ── Overtime ──────────────────────────────────────────────
     let otStats = { total: 0, pending: 0, approved: 0, totalHours: 0, records: [] as any[] };
     try {
-      const conn = await mysql.createConnection(otDbConfig);
       // Fallback Overtime to filter precisely 06:30 if created_at is available, else request_date
-      const [allOt] = await conn.query('SELECT * FROM overtime_requests WHERE request_date = ?', [date]) as any;
-      await conn.end();
+      const [allOt] = await db.query('SELECT * FROM overtime_requests WHERE request_date = ?', [date]) as any;
       otStats = {
         total: allOt.length,
         pending: allOt.filter((o: any) => o.status === 'Pending').length,

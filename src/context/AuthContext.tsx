@@ -1,33 +1,7 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 
-if (typeof window !== 'undefined') {
-  const originalFetch = window.fetch;
-  window.fetch = async (...args) => {
-    let [resource, config] = args;
-    
-    // Attempt to inject x-section if it's an API request
-    if (typeof resource === 'string' && resource.startsWith('/api/')) {
-      let section = '';
-      try {
-        const stored = localStorage.getItem('it-mgt-user');
-        if (stored) {
-          section = JSON.parse(stored).division || '';
-        }
-      } catch { /* ignore */ }
-
-      if (section) {
-        config = config || {};
-        config.headers = {
-          ...config.headers,
-          'x-section': section
-        };
-      }
-    }
-    return originalFetch(resource, config);
-  };
-}
 
 export interface Member {
   id: number;
@@ -73,6 +47,8 @@ interface AuthContextType {
   addAuditLog: (action: string, module: string, details: string) => void;
   role: string | null;
   userEmail: string | null;
+  activeSection: string;
+  setActiveSection: (section: string) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -81,11 +57,56 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [currentUser, setCurrentUser] = useState<Member | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
   const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
+  const [activeSection, setActiveSectionState] = useState<string>('');
+
+  const setActiveSection = (section: string) => {
+    localStorage.setItem('activeSection', section);
+    setActiveSectionState(section);
+    // Reload to guarantee all layouts and APIs fetch with the new section header seamlessly
+    window.location.reload();
+  };
 
   useEffect(() => {
+    // Setup fetch interceptor once
+    if (typeof window !== 'undefined' && !(window as any).__fetchIntercepted) {
+      (window as any).__fetchIntercepted = true;
+      const originalFetch = window.fetch;
+      window.fetch = async (...args) => {
+        let [resource, config] = args;
+        if (typeof resource === 'string' && resource.startsWith('/api/')) {
+          let section = '';
+          try {
+            section = localStorage.getItem('activeSection') || '';
+            if (!section) {
+              const stored = localStorage.getItem('it-mgt-user');
+              if (stored) section = JSON.parse(stored).division || '';
+            }
+            if (section === 'Management') section = 'IT';
+          } catch { /* ignore */ }
+          if (section) {
+            config = config || {};
+            config.headers = { ...config.headers, 'x-section': section };
+          }
+        }
+        return originalFetch(resource, config);
+      };
+    }
+
     const stored = localStorage.getItem('it-mgt-user');
     if (stored) {
-      try { setCurrentUser(JSON.parse(stored)); } catch { /* ignore */ }
+      try { 
+        const parsed = JSON.parse(stored);
+        setCurrentUser(parsed); 
+        
+        // Ensure Management users start in a valid operational DB (e.g., IT) instead of invalid 'Management'
+        let initialSection = localStorage.getItem('activeSection') || parsed.division || '';
+        if (parsed.member_type === 'Management' && (!localStorage.getItem('activeSection') || localStorage.getItem('activeSection') === 'Management')) {
+           initialSection = 'IT'; 
+           localStorage.setItem('activeSection', 'IT');
+        }
+        
+        setActiveSectionState(initialSection);
+      } catch { /* ignore */ }
     }
     fetchMembers();
     fetchAuditLogs();
@@ -137,6 +158,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (data.success && data.member) {
           setCurrentUser(data.member);
           localStorage.setItem('it-mgt-user', JSON.stringify(data.member));
+          
+          let section = data.member.division;
+          if (data.member.member_type === 'Management' && section === 'Management') section = 'IT';
+          localStorage.setItem('activeSection', section);
+          setActiveSectionState(section);
+          
           return true;
         }
       }
@@ -147,6 +174,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = () => {
     setCurrentUser(null);
     localStorage.removeItem('it-mgt-user');
+    localStorage.removeItem('activeSection');
+    setActiveSectionState('');
   };
 
   const addMember = async (member: Omit<Member, 'id'>) => {
@@ -198,16 +227,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setAuditLogs(prev => [{ id: Date.now(), action, module, details, user_name: currentUser?.name || 'System', timestamp: new Date().toISOString() }, ...prev]);
   };
 
+  const scopedMembers = useMemo(() => {
+    if (!currentUser) return members;
+    
+    // Everyone strictly isolates to the active dropdown section.
+    return members.filter(m => {
+      // Show members belonging to the currently selected activeSection workspace context.
+      if (m.division === activeSection) return true;
+      // Also show Management members to IT admins and Management themselves to allow profile editing.
+      if (m.member_type === 'Management' && (activeSection === 'IT' || currentUser.member_type === 'Management')) return true;
+      return false;
+    });
+  }, [members, currentUser, activeSection]);
+
   return (
     <AuthContext.Provider value={{
       currentUser,
-      isMaster: false,
+      isMaster: false, // Deprecated over-ride
       isManagement: currentUser?.member_type === 'Management',
-      members,
+      members: scopedMembers,
       login, logout, addMember, updateMember, deleteMember, refreshMembers,
       auditLogs, addAuditLog,
       role: currentUser?.role ?? null,
       userEmail: currentUser?.name ?? null,
+      activeSection,
+      setActiveSection
     }}>
       {children}
     </AuthContext.Provider>

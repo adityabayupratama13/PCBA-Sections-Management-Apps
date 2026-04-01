@@ -15,7 +15,10 @@ export const SECTION_DB_MAP: Record<string, string> = {
   'Dipping Technician': 'pcba_dipping_tech_db',
   'PGA-HRE': 'pcba_pga_hre_db',
   'MI Wiseally': 'pcba_mi_wiseally_db',
-  'MI Bluetti': 'pcba_mi_bluetti_db'
+  'MI Bluetti': 'pcba_mi_bluetti_db',
+  'IT': 'pcba_it_db',
+  'NPI': 'pcba_npi_db',
+  'QA': 'pcba_qa_db'
 };
 
 export const CENTRAL_DB = 'pcba_central_db';

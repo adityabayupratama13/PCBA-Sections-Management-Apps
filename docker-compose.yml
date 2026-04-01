@@ -57,10 +57,10 @@ services:
       - DB_PATH=/data
       - MYSQL_HOST=giken-mysql
     ports:
-      - "3004:3004"
+      - "3002:3002"
     restart: unless-stopped
     networks:
-      - docker_giken-network
+      - new_giken-net
 
   # ============================================
   # APP 4 - Automation Refill (Port 3003)

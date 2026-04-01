@@ -10,7 +10,7 @@ import { useAuth, type Member } from '@/context/AuthContext';
 import Link from 'next/link';
 import { canManageTeam, canEditOwnProfile } from '@/lib/permissions';
 
-interface Position { id: number; name: string; description: string; }
+interface Position { id: number; name: string; description: string; division: string; level: string; }
 
 function roleBadgeStyle(role: string): string {
   const p = [
@@ -28,17 +28,25 @@ function roleBadgeStyle(role: string): string {
 }
 
 export default function TeamPage() {
-  const { members, addMember, updateMember, deleteMember, currentUser } = useAuth();
+  const { members, currentUser, addMember, updateMember, deleteMember } = useAuth();
   const canEdit = canManageTeam(currentUser);
 
   const [positions, setPositions] = useState<Position[]>([]);
   useEffect(() => {
     fetch('/api/positions').then(r => r.json()).then(setPositions).catch(() => {});
   }, []);
-  const roleNames = positions.map(p => p.name);
 
-  const itMembers = members.filter(m => m.member_type !== 'Management');
-  const managementMembers = members.filter(m => m.member_type === 'Management');
+  // Strict Isolation: Users exclusively see members of their active section context.
+  // For normal users, activeSection === currentUser.division natively.
+  // For Management, activeSection changes based on the Sidebar Dropdown.
+  const { activeSection, isManagement } = useAuth();
+  
+  const roleNames = positions
+    .filter(p => p.division === activeSection || (isManagement && p.division === 'Management'))
+    .map(p => p.name);
+
+  const sectionMembers = members.filter(m => m.division === activeSection || (isManagement && m.member_type === 'Management'));
+  const managementMembers: any[] = []; // No longer separating management into a different list
   const allMembers: Member[] = members;
 
   const [search, setSearch] = useState('');
@@ -85,7 +93,7 @@ export default function TeamPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [allMembers]);
 
-  const filtered = itMembers.filter(m => {
+  const filtered = sectionMembers.filter(m => {
     const q = search.toLowerCase();
     return (m.name.toLowerCase().includes(q) || m.badge.includes(q)) &&
            (filterRole === 'All' || m.role === filterRole);
@@ -126,14 +134,13 @@ export default function TeamPage() {
       badge: (fd.get('badge') as string).trim(),
       password: pw || editingMember?.password || '',
       role: fd.get('role') as string,
-      division: (fd.get('division') as string).trim(),
+      division: editingMember ? editingMember.division : activeSection,
       status: fd.get('status') as 'Active' | 'Inactive',
       email: (fd.get('email') as string || '').trim(),
       phone: (fd.get('phone') as string || '').trim(),
       grade: fd.get('grade') as string || '',
       created_at: (fd.get('joinDate') as string) || editingMember?.created_at || new Date().toISOString(),
       photo_url: pendingPhoto ?? editingMember?.photo_url ?? undefined,
-      member_type: 'IT',
     };
     if (!data.name || !data.badge) { toast.error('Name and Badge required'); return; }
     const dup = allMembers.find(m => m.badge === data.badge && m.id !== editingMember?.id);
@@ -250,7 +257,7 @@ export default function TeamPage() {
         <div>
           <h1 className="text-3xl font-bold text-foreground">Team Management</h1>
           <p className="text-muted-foreground mt-1">
-            IT Team — <span className="font-semibold text-foreground">{itMembers.length}</span> members
+            Registered Members — <span className="font-semibold text-foreground">{sectionMembers.length}</span> members
             {managementMembers.length > 0 && <> · Management — <span className="font-semibold text-amber-400">{managementMembers.length}</span></>}
           </p>
         </div>
@@ -331,8 +338,8 @@ export default function TeamPage() {
       <div>
         <div className="flex items-center gap-2 mb-3">
           <Shield className="w-4 h-4 text-primary" />
-          <h2 className="text-sm font-bold text-foreground">IT Team</h2>
-          <span className="text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full">{itMembers.length} members</span>
+          <h2 className="text-sm font-bold text-foreground">Registered Members</h2>
+          <span className="text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded-full">{sectionMembers.length} members</span>
         </div>
       <div className="rounded-2xl p-4 flex flex-col sm:flex-row gap-4 border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
         <div className="relative flex-1">
@@ -507,7 +514,8 @@ export default function TeamPage() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div><label className="block text-sm font-medium text-muted-foreground mb-1.5">Division</label>
-              <input name="division" defaultValue={editingMember?.division} placeholder="e.g. Helpdesk" className={inputClass} /></div>
+              <input readOnly disabled value={editingMember ? editingMember.division : activeSection} className={inputClass + ' opacity-50 cursor-not-allowed'} />
+            </div>
             <div><label className="block text-sm font-medium text-muted-foreground mb-1.5">Status</label>
               <select name="status" defaultValue={editingMember?.status || 'Active'} className={inputClass + ' cursor-pointer'}>
                 <option value="Active">Active</option>

@@ -14,7 +14,7 @@ interface TaskItem { assignee: string; status: string; }
 interface MemberItem { name: string; role: string; status: string; }
 
 export default function DashboardPage() {
-  const { auditLogs, currentUser } = useAuth();
+  const { auditLogs, currentUser, activeSection } = useAuth();
   const [stats, setStats] = useState<Stats>({ members: 0, tickets: { total: 0, open: 0, inProgress: 0, resolved: 0 }, tasks: { total: 0, backlog: 0, inProgress: 0, review: 0, done: 0 }, logs: 0, positions: 0 });
   const defaultStr = new Date().toISOString().split('T')[0];
   const [startDate, setStartDate] = useState<string>(defaultStr);
@@ -49,11 +49,13 @@ export default function DashboardPage() {
       fetch('/api/analytics').then(r => r.json()),
     ]).then(([m, t, tk, dl, al, pos, analyticsResult]) => {
       setRecentLogs(al.slice(0, 10));
-      const itMembersObj = (m as any[]).filter((x: any) => x.member_type !== 'Management');
-      setTeamMembers(itMembersObj.slice(0, 8));
+      const filterMembers = (m as any[]).filter((x: any) => {
+        return x.division === activeSection;
+      });
+      setTeamMembers(filterMembers.slice(0, 8));
       if (analyticsResult && analyticsResult.heatmap) setHeatmap(analyticsResult.heatmap);
 
-      setRawData({ tickets: t, tasks: tk, logs: dl, members: itMembersObj, positions: pos });
+      setRawData({ tickets: t, tasks: tk, logs: dl, members: filterMembers, positions: pos });
       setLoading(false);
       
     }).catch(() => setLoading(false));
@@ -487,7 +489,7 @@ export default function DashboardPage() {
 
               {/* Workflow Guide */}
               <div className="animate-in fade-in slide-in-from-bottom-4 duration-700 ease-out fill-mode-both rounded-2xl p-5 border" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
-                <h2 className="text-sm font-semibold text-foreground mb-4">📋 IT Workflow</h2>
+                <h2 className="text-sm font-semibold text-foreground mb-4">📋 Section Workflow</h2>
                 <div className="space-y-3">
                   {[
                     { step: '1', label: 'Ticket masuk', desc: 'Job request dari user/department' },

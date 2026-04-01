@@ -25,11 +25,11 @@ const LEVEL_COLORS: Record<string, string> = {
   Staff:      'bg-orange-500/15 text-orange-400 border-orange-500/25',
 };
 
-const DIVISIONS = ['Engineering', 'Technician SMT', 'Production SMT-A', 'Production SMT-B', 'Production SMT-C', 'PMC', 'Finish Goods', 'MI Second Floor', 'MI Grooming Garment', 'MI Denso Ryoyo', 'Dipping Technician', 'PGA-HRE', 'MI Wiseally', 'MI Bluetti'];
+const DIVISIONS = ['Engineering', 'Technician SMT', 'Production SMT-A', 'Production SMT-B', 'Production SMT-C', 'PMC', 'Finish Goods', 'MI Second Floor', 'MI Grooming Garment', 'MI Denso Ryoyo', 'Dipping Technician', 'PGA-HRE', 'MI Wiseally', 'MI Bluetti', 'IT', 'NPI', 'QA'];
 
 export default function PositionsPage() {
   const { data: positions, loading, create, update, remove } = useApi<Position>('positions');
-  const { currentUser } = useAuth();
+  const { currentUser, activeSection, isManagement } = useAuth();
   const canEdit = canManageTeam(currentUser);
   const [search, setSearch] = useState('');
   const [filterLevel, setFilterLevel] = useState('All');
@@ -51,10 +51,12 @@ export default function PositionsPage() {
   };
 
   const filtered = positions.filter(p => {
+    // Isolate by division natively matching the Team page logic
+    const matchDivision = p.division === activeSection || (isManagement && p.division === 'Management');
     const q = search.toLowerCase();
     const matchSearch = p.name.toLowerCase().includes(q) || p.description.toLowerCase().includes(q);
     const matchLevel = filterLevel === 'All' || p.level === filterLevel;
-    return matchSearch && matchLevel;
+    return matchDivision && matchSearch && matchLevel;
   });
 
   const openAddModal = () => { setEditingPosition(null); setIsModalOpen(true); };
@@ -72,7 +74,7 @@ export default function PositionsPage() {
     const fd = new FormData(e.target as HTMLFormElement);
     const payload = {
       name: (fd.get('name') as string).trim(),
-      division: fd.get('division') as string,
+      division: editingPosition ? editingPosition.division : activeSection,
       level: fd.get('level') as string,
       description: editingPosition ? editingPosition.description : '[]',
       userName: currentUser?.name || 'System',
@@ -142,7 +144,9 @@ export default function PositionsPage() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-3xl font-bold text-foreground">Job Positions</h1>
-          <p className="text-muted-foreground mt-1">Master data jabatan — {positions.length} positions</p>
+          <p className="text-muted-foreground mt-1">
+            Registered positions for <strong className="text-foreground">{activeSection}</strong> — {filtered.length} positions
+          </p>
         </div>
         {canEdit && (
           <button onClick={openAddModal}
@@ -182,9 +186,7 @@ export default function PositionsPage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-muted-foreground mb-1.5">Division *</label>
-              <select name="division" defaultValue={editingPosition?.division || 'IT Department'} className={inputClass + ' cursor-pointer'}>
-                {DIVISIONS.map(d => <option key={d}>{d}</option>)}
-              </select>
+              <input readOnly disabled value={editingPosition ? editingPosition.division : activeSection} className={inputClass + ' opacity-50 cursor-not-allowed'} />
             </div>
             <div>
               <label className="block text-sm font-medium text-muted-foreground mb-1.5">Level *</label>

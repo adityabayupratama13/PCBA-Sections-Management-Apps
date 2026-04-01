@@ -12,6 +12,13 @@ import { useEffect, useRef } from 'react';
 import anime from 'animejs';
 import PhotoAvatar from '@/components/PhotoAvatar';
 
+const SECTIONS = [
+  'Engineering', 'Technician SMT', 'Production SMT-A', 'Production SMT-B', 
+  'Production SMT-C', 'PMC', 'Finish Goods', 'MI Second Floor', 
+  'MI Grooming Garment', 'MI Denso Ryoyo', 'Dipping Technician', 
+  'PGA-HRE', 'MI Wiseally', 'MI Bluetti', 'IT', 'NPI', 'QA'
+].sort();
+
 const NAV_ITEMS = [
   { label: 'Dashboard', href: '/', icon: LayoutDashboard },
   { label: 'Team', href: '/team', icon: Users },
@@ -36,7 +43,7 @@ interface SidebarProps {
 
 export function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
   const pathname = usePathname();
-  const { role, currentUser, members } = useAuth();
+  const { role, currentUser, members, activeSection, setActiveSection, isManagement } = useAuth();
   const currentMemberPhoto = members.find(m => m.id === currentUser?.id)?.photo_url;
   const navRef = useRef<HTMLElement>(null);
 
@@ -61,7 +68,7 @@ export function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
         <div className="flex items-center gap-3">
           <GikenLogo className="h-6 w-auto text-[#1e3a8a] dark:text-white transition-colors duration-300" />
           <div className="border-l border-border pl-3">
-            <div className="font-bold text-foreground text-sm xl:text-base leading-none">IT Apps</div>
+            <div className="font-bold text-foreground text-sm xl:text-base leading-none">PCBA Apps</div>
             <div className="text-[10px] text-muted-foreground mt-1 font-semibold tracking-wider uppercase">Dashboard</div>
           </div>
         </div>
@@ -73,6 +80,26 @@ export function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
         </button>
       </div>
 
+      {isManagement && (
+        <div className="px-6 pb-4">
+          <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest mb-1.5 flex items-center gap-1.5"><FolderKanban className="w-3 h-3"/> Active Section</div>
+          <select 
+            value={activeSection}
+            onChange={(e) => setActiveSection(e.target.value)}
+            className="w-full bg-primary/10 border border-primary/20 rounded-lg px-2.5 py-1.5 text-xs font-bold text-primary focus:ring-1 focus:ring-primary focus:border-primary transition-all cursor-pointer shadow-sm appearance-none"
+            style={{
+               backgroundImage: `url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%233b82f6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e")`,
+               backgroundRepeat: 'no-repeat',
+               backgroundPosition: 'right 0.5rem center',
+               backgroundSize: '1em 1em',
+               paddingRight: '2rem'
+            }}
+          >
+            {SECTIONS.map(sec => <option key={sec} value={sec} className="text-foreground bg-surface">{sec}</option>)}
+          </select>
+        </div>
+      )}
+
       {/* Nav Label */}
       <div className="px-6 pb-2">
         <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest">Main Menu</span>
@@ -81,6 +108,8 @@ export function Sidebar({ isOpen, setIsOpen }: SidebarProps) {
       {/* Navigation */}
       <nav ref={navRef} id="sidebar-nav" className="flex-1 overflow-y-auto custom-scrollbar px-3 pb-4 space-y-0.5">
         {NAV_ITEMS.map((item) => {
+          if (item.label === 'Assets' && currentUser?.division !== 'IT') return null;
+
           const isActive = pathname === item.href;
           const Icon = item.icon;
 
