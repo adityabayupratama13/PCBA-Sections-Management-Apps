@@ -6,7 +6,7 @@ export async function GET() {
   try {
     const db = getDb();
     const [rows] = await db.query(`
-      SELECT id, member_name, DATE_FORMAT(request_date, '%Y-%m-%d') as request_date, start_time, end_time, hours, reason, revision_count, status, it_supervisor_approved_by, manager_approved_by, declined_by, decline_reason, created_at, updated_at 
+      SELECT id, member_name, DATE_FORMAT(request_date, '%Y-%m-%d') as request_date, start_time, end_time, hours, reason, revision_count, status, it_supervisor_approved_by, manager_approved_by, declined_by, decline_reason, created_at, updated_at, prev_start_time, prev_end_time, prev_hours 
       FROM overtime_requests ORDER BY created_at DESC
     `);
     return NextResponse.json(rows);
@@ -52,15 +52,20 @@ export async function PUT(req: Request) {
     const db = getDb();
     
     if (isRevision) {
+      // Dapatkan data lama terlebih dahulu sebelum ditimpa
+      const [currentData] = await db.execute(`SELECT start_time, end_time, hours FROM overtime_requests WHERE id=?`, [id]);
+      const prev = (currentData as any[])[0] || {};
+
       await db.execute(
         `UPDATE overtime_requests 
-         SET start_time=?, end_time=?, hours=?, reason=?, status='Pending', 
+         SET prev_start_time=?, prev_end_time=?, prev_hours=?,
+             start_time=?, end_time=?, hours=?, reason=?, status='Pending', 
              revision_count = revision_count + 1,
              it_supervisor_approved_by='', it_supervisor_approved_at=NULL,
              manager_approved_by='', manager_approved_at=NULL,
              declined_by='', decline_reason=''
          WHERE id=?`,
-        [fields.start_time, fields.end_time, fields.hours, fields.reason, id]
+        [prev.start_time || null, prev.end_time || null, prev.hours || null, fields.start_time, fields.end_time, fields.hours, fields.reason, id]
       );
     } else {
       const updates = [];
