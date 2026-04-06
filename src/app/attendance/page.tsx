@@ -47,10 +47,16 @@ export default function AttendancePage() {
   const isManager = canManageAttendanceAdmin(currentUser);
 
   // API Data
-  const { data: logs, refetch: fetchLogs, create: createLog } = useApi<AttendanceLog>('attendance');
-  const { data: leaves, refetch: fetchLeaves, create: createLeave, update: updateLeave } = useApi<LeaveReq>('leaves');
-  const { data: balances, refetch: fetchBalances, update: updateBalance } = useApi<LeaveBalance>('leave-balances');
-  const { data: overtimes, refetch: fetchOvertimes, create: createOvertime, update: updateOvertime } = useApi<OvertimeReq>('overtime');
+  const { data: rawLogs, refetch: fetchLogs, create: createLog } = useApi<AttendanceLog>('attendance');
+  const { data: rawLeaves, refetch: fetchLeaves, create: createLeave, update: updateLeave } = useApi<LeaveReq>('leaves');
+  const { data: rawBalances, refetch: fetchBalances, update: updateBalance } = useApi<LeaveBalance>('leave-balances');
+  const { data: rawOvertimes, refetch: fetchOvertimes, create: createOvertime, update: updateOvertime } = useApi<OvertimeReq>('overtime');
+
+  const logs = Array.isArray(rawLogs) ? rawLogs : [];
+  const leaves = Array.isArray(rawLeaves) ? rawLeaves : [];
+  const balances = Array.isArray(rawBalances) ? rawBalances : [];
+  const overtimes = Array.isArray(rawOvertimes) ? rawOvertimes : [];
+  const membersList = Array.isArray(members) ? members : [];
 
   // Refresh on mount
   useEffect(() => { fetchLogs(); fetchLeaves(); fetchBalances(); fetchOvertimes(); }, [fetchLogs, fetchLeaves, fetchBalances, fetchOvertimes]);
@@ -131,7 +137,7 @@ export default function AttendancePage() {
 
   // Tab 4: Employee Status State
   const [isEmpStatusModalOpen, setIsEmpStatusModalOpen] = useState(false);
-  const [editingEmpStatus, setEditingEmpStatus] = useState<typeof members[0] | null>(null);
+  const [editingEmpStatus, setEditingEmpStatus] = useState<typeof membersList[0] | null>(null);
   const [bulkError, setBulkError] = useState<string | null>(null);
   const { updateMember } = useAuth();
 
@@ -300,7 +306,7 @@ export default function AttendancePage() {
     let count = 0;
     try {
       const nextWeekMonday = addDays(weekStart, 7);
-      const activeItMembers = members.filter(m => m.member_type !== 'Management');
+      const activeItMembers = membersList.filter(m => m.member_type !== 'Management');
       for (const m of activeItMembers) {
         if (m.status !== 'Active') continue;
         const isAnalyst = m.role.includes('Analyst & Support');
@@ -358,7 +364,7 @@ export default function AttendancePage() {
   const exportRoster = (type: 'excel' | 'pdf') => {
     const datesHeader = rosterDates.map(d => format(d, 'dd MMM'));
     const headers = ['Team Member', 'Role', ...datesHeader];
-    const dataObj = members.filter(m => m.status === 'Active' && m.member_type !== 'Management').map(m => {
+    const dataObj = membersList.filter(m => m.status === 'Active' && m.member_type !== 'Management').map(m => {
       const row: Record<string, string | number> = { 'Team Member': m.name, 'Role': m.role };
       rosterDates.forEach(d => { row[format(d, 'dd MMM')] = (logs.find(l => l.member_name === m.name && l.date === format(d, 'yyyy-MM-dd'))?.shift || 'Off') as string; });
       return row;
@@ -368,7 +374,7 @@ export default function AttendancePage() {
   };
 
   const RosterTab = () => {
-    const filteredMembers = members.filter(m => m.status === 'Active' && m.member_type !== 'Management').filter(m => {
+    const filteredMembers = membersList.filter(m => m.status === 'Active' && m.member_type !== 'Management').filter(m => {
       if (!isBulkMode || bulkFilterShift === 'All') return true;
       const mondayStr = format(rosterDates[0], 'yyyy-MM-dd');
       const currentMondayShift = logs.find(l => l.member_name === m.name && l.date === mondayStr)?.shift || 'Off';
@@ -376,7 +382,7 @@ export default function AttendancePage() {
     });
 
     const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
-      if (e.target.checked) setSelectedBulkMembers(filteredMembers.map(m => m.name));
+      if (e.target.checked) setSelectedBulkMembers(filteredmembersList.map(m => m.name));
       else setSelectedBulkMembers([]);
     };
 
@@ -436,7 +442,7 @@ export default function AttendancePage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border bg-surface">
-              {filteredMembers.map(member => {
+              {filteredmembersList.map(member => {
                 const isSelected = selectedBulkMembers.includes(member.name);
                 return (
                   <tr key={member.id} className={`transition-colors ${isSelected ? 'bg-primary/10' : 'hover:bg-primary/5'}`}>
@@ -444,7 +450,7 @@ export default function AttendancePage() {
                       <div className="flex items-start gap-3">
                         <input type="checkbox" checked={isSelected} onChange={(e) => {
                           if (e.target.checked) setSelectedBulkMembers([...selectedBulkMembers, member.name]);
-                          else setSelectedBulkMembers(selectedBulkMembers.filter(n => n !== member.name));
+                          else setSelectedBulkMembers(selectedBulkmembersList.filter(n => n !== member.name));
                         }} className="mt-1 w-4 h-4 rounded border-border text-primary outline-none flex-shrink-0" />
                         <div className="min-w-0 flex-1">
                           <div className="font-medium text-foreground truncate">{member.name}</div>
@@ -715,7 +721,7 @@ export default function AttendancePage() {
 
         for (const nm of targets) {
           if (!nm) continue;
-          const existingLog = overtimes.find(o => o.member_name === nm && o.request_date === editingOtLog.request_date);
+          const existingLog = (Array.isArray(overtimes) ? overtimes : []).find(o => o.member_name === nm && o.request_date === editingOtLog.request_date);
           if (existingLog) {
             await updateOvertime({
               id: existingLog.id,
@@ -746,7 +752,7 @@ export default function AttendancePage() {
         const duplicateWarningMembers: string[] = [];
         for (const nm of targets) {
           if (!nm) continue;
-          const hasDup = overtimes.some(o => o.member_name === nm && o.request_date === dateStr);
+          const hasDup = (Array.isArray(overtimes) ? overtimes : []).some(o => o.member_name === nm && o.request_date === dateStr);
           if (hasDup) duplicateWarningMembers.push(nm);
         }
 
@@ -836,7 +842,7 @@ export default function AttendancePage() {
     const endOfCutoff = setDate(targetDate, 15);
     endOfCutoff.setHours(23, 59, 59, 999);
 
-    const stats = members.filter(m => m.status === 'Active' && m.member_type !== 'Management' && m.name.toLowerCase().includes(otSearch.toLowerCase()) && (isManager || m.name === currentUser?.name)).map(m => {
+    const stats = membersList.filter(m => m.status === 'Active' && m.member_type !== 'Management' && m.name.toLowerCase().includes(otSearch.toLowerCase()) && (isManager || m.name === currentUser?.name)).map(m => {
       let periodOt = 0;
       let periodOtHidup = 0;
       let ytdOt = 0;
@@ -1288,7 +1294,7 @@ export default function AttendancePage() {
   };
 
   const LeaveTab = () => {
-    const balancesDisplay = members.filter(m => m.status === 'Active' && m.member_type !== 'Management').map(m => {
+    const balancesDisplay = membersList.filter(m => m.status === 'Active' && m.member_type !== 'Management').map(m => {
       const bObj = balances?.find(b => b.member_name === m.name);
       return {
         name: m.name,
@@ -1498,7 +1504,7 @@ export default function AttendancePage() {
 
     const exportEmpStatus = (type: 'excel' | 'pdf') => {
       const headers = ['Name', 'Badge', 'Role', 'Grade', 'Join Date', 'Finish Date', 'Working Duration', 'Plan Contract (Months)', 'Status', 'Days Left'];
-      const dataObj: Record<string, string | number>[] = members.filter(m => m.member_type !== 'Management').map(m => {
+      const dataObj: Record<string, string | number>[] = membersList.filter(m => m.member_type !== 'Management').map(m => {
         let daysLeft: number | string = '--';
         if (m.finish_date) {
           const timeDiff = new Date(m.finish_date).getTime() - new Date().getTime();
@@ -1537,7 +1543,7 @@ export default function AttendancePage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {members.filter(m => m.member_type !== 'Management').map(m => {
+                {membersList.filter(m => m.member_type !== 'Management').map(m => {
                   let daysLeftText = '--';
                   let isEndingSoon = false;
                   let isFinished = false;
@@ -1764,7 +1770,7 @@ export default function AttendancePage() {
             <div className="space-y-3 mt-4">
               <label className="block text-sm font-medium text-foreground mb-1.5">Individual Reasons <span className="text-muted-foreground font-normal">(required)</span></label>
               <div className="max-h-[160px] overflow-y-auto custom-scrollbar pr-2 space-y-2">
-                {selectedLeaveMembers.map(memberName => (
+                {selectedLeavemembersList.map(memberName => (
                   <div key={memberName} className="flex flex-col gap-1">
                     <span className="text-xs font-semibold text-muted-foreground">{memberName}</span>
                     <input
@@ -1843,14 +1849,14 @@ export default function AttendancePage() {
                          <div className="text-[10px] text-muted-foreground font-semibold">Original (Before)</div>
                          <div className="flex flex-col text-[13px] opacity-70">
                            <span>⏱️ Jam Mati: {Number(editingOtLog.hours).toFixed(1)}h</span>
-                           <span>✨ Jam Hidup: {calculateJamHidup(Number(editingOtLog.hours), members.find(m => m.name === editingOtLog.member_name)?.role || '').toFixed(1)}h</span>
+                           <span>✨ Jam Hidup: {calculateJamHidup(Number(editingOtLog.hours), membersList.find(m => m.name === editingOtLog.member_name)?.role || '').toFixed(1)}h</span>
                          </div>
                        </div>
                        <div className="space-y-1 border-l border-border pl-4">
                          <div className="text-[10px] text-primary font-bold">Revised (After)</div>
                          <div className="flex flex-col text-[13px] font-medium">
                            <span className={Number(editingOtLog.hours) !== liveOtDiff ? "text-primary" : "text-foreground"}>⏱️ Jam Mati: {liveOtDiff.toFixed(1)}h</span>
-                           <span className={Number(editingOtLog.hours) !== liveOtDiff ? "text-primary" : "text-foreground"}>✨ Jam Hidup: {calculateJamHidup(liveOtDiff, members.find(m => m.name === editingOtLog.member_name)?.role || '').toFixed(1)}h</span>
+                           <span className={Number(editingOtLog.hours) !== liveOtDiff ? "text-primary" : "text-foreground"}>✨ Jam Hidup: {calculateJamHidup(liveOtDiff, membersList.find(m => m.name === editingOtLog.member_name)?.role || '').toFixed(1)}h</span>
                          </div>
                        </div>
                      </div>
@@ -1862,7 +1868,7 @@ export default function AttendancePage() {
                      </div>
                      <span className="invisible text-sm font-medium px-2">to</span>
                      <div className="flex-1">
-                       {(selectedOtMembers.length === 1 || !isManager) && <span>✨ Jam Hidup: {calculateJamHidup(liveOtDiff, members.find(m => m.name === (isManager ? selectedOtMembers[0] : currentUser?.name))?.role || '').toFixed(1)}h</span>}
+                       {(selectedOtMembers.length === 1 || !isManager) && <span>✨ Jam Hidup: {calculateJamHidup(liveOtDiff, membersList.find(m => m.name === (isManager ? selectedOtMembers[0] : currentUser?.name))?.role || '').toFixed(1)}h</span>}
                      </div>
                    </div>
                  )}
@@ -1880,12 +1886,12 @@ export default function AttendancePage() {
             <div className="space-y-3 mt-4">
               <label className="block text-sm font-medium text-foreground mb-1.5">Individual Remarks <span className="text-muted-foreground font-normal">(optional)</span></label>
               <div className="max-h-[160px] overflow-y-auto custom-scrollbar pr-2 space-y-2">
-                {selectedOtMembers.map(memberName => (
+                {selectedOtmembersList.map(memberName => (
                   <div key={memberName} className="flex flex-col gap-1">
                     <span className="text-xs font-semibold text-muted-foreground">{memberName}</span>
                     <input
                       type="text"
-                      value={otBulkReasons[memberName] ?? overtimes.find(o => o.member_name === memberName && o.request_date === (editingOtLog?.request_date || otFormDate))?.reason || ''}
+                      value={otBulkReasons[memberName] ?? (Array.isArray(overtimes) ? overtimes : []).find(o => o.member_name === memberName && o.request_date === (editingOtLog?.request_date || otFormDate))?.reason || ''}
                       onChange={e => setOtBulkReasons(prev => ({...prev, [memberName]: e.target.value}))}
                       className="w-full bg-surface border border-border rounded-lg px-3 py-1.5 text-sm text-foreground focus:ring-1 focus:ring-primary outline-none" 
                       placeholder={`Reason for ${memberName}...`} 
