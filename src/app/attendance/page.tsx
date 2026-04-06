@@ -90,7 +90,7 @@ export default function AttendancePage() {
   const [selectedOtMembers, setSelectedOtMembers] = useState<string[]>([]);
   const [otMemberSearch, setOtMemberSearch] = useState('');
   const [isOtEmployeeDropdownOpen, setIsOtEmployeeDropdownOpen] = useState(false);
-  
+
   const [otFormDate, setOtFormDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [otFormStart, setOtFormStart] = useState('17:00');
   const [otFormEnd, setOtFormEnd] = useState('20:00');
@@ -382,7 +382,7 @@ export default function AttendancePage() {
     });
 
     const handleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
-      if (e.target.checked) setSelectedBulkMembers(filteredmembersList.map(m => m.name));
+      if (e.target.checked) setSelectedBulkMembers(filteredMembers.map(m => m.name));
       else setSelectedBulkMembers([]);
     };
 
@@ -442,7 +442,7 @@ export default function AttendancePage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-border bg-surface">
-              {filteredmembersList.map(member => {
+              {filteredMembers.map(member => {
                 const isSelected = selectedBulkMembers.includes(member.name);
                 return (
                   <tr key={member.id} className={`transition-colors ${isSelected ? 'bg-primary/10' : 'hover:bg-primary/5'}`}>
@@ -450,7 +450,7 @@ export default function AttendancePage() {
                       <div className="flex items-start gap-3">
                         <input type="checkbox" checked={isSelected} onChange={(e) => {
                           if (e.target.checked) setSelectedBulkMembers([...selectedBulkMembers, member.name]);
-                          else setSelectedBulkMembers(selectedBulkmembersList.filter(n => n !== member.name));
+                          else setSelectedBulkMembers(selectedBulkMembers.filter(n => n !== member.name));
                         }} className="mt-1 w-4 h-4 rounded border-border text-primary outline-none flex-shrink-0" />
                         <div className="min-w-0 flex-1">
                           <div className="font-medium text-foreground truncate">{member.name}</div>
@@ -739,7 +739,7 @@ export default function AttendancePage() {
             notFoundCount++;
           }
         }
-        
+
         if (revisedCount > 0) {
           toast.success(revisedCount > 1 ? `Successfully revised overtime for ${revisedCount} employees` : 'Overtime revised successfully');
         }
@@ -918,12 +918,12 @@ export default function AttendancePage() {
                 );
               })}
             </select>
-            <button onClick={() => { 
+            <button onClick={() => {
               if (selectedOtMembers.length === 0 && selectedOtMember) {
                 setSelectedOtMembers([selectedOtMember]);
               }
-              setEditingOtLog(null); 
-              setIsOtModalOpen(true); 
+              setEditingOtLog(null);
+              setIsOtModalOpen(true);
             }} className="px-4 py-2 w-full sm:w-auto bg-primary text-primary-foreground text-sm font-medium rounded-lg shadow whitespace-nowrap hover:bg-primary/90">
               + Add Overtime
             </button>
@@ -936,7 +936,7 @@ export default function AttendancePage() {
             <div className="flex justify-between items-center px-1 mb-1">
               <h4 className="text-xs font-semibold uppercase text-muted-foreground">Select Member</h4>
               {isManager && stats.length > 0 && (
-                <button 
+                <button
                   onClick={() => {
                     if (selectedOtMembers.length === stats.length) {
                       setSelectedOtMembers([]);
@@ -965,14 +965,14 @@ export default function AttendancePage() {
                   >
                     {isManager && (
                       <div className="absolute top-3 right-3" onClick={e => e.stopPropagation()}>
-                        <input 
-                          type="checkbox" 
-                          checked={isSelectedForOt} 
+                        <input
+                          type="checkbox"
+                          checked={isSelectedForOt}
                           onChange={(e) => {
                             if (e.target.checked) setSelectedOtMembers(prev => [...prev, s.member.name]);
                             else setSelectedOtMembers(prev => prev.filter(n => n !== s.member.name));
-                          }} 
-                          className="w-4 h-4 rounded border-border text-primary focus:ring-primary outline-none cursor-pointer" 
+                          }}
+                          className="w-4 h-4 rounded border-border text-primary focus:ring-primary outline-none cursor-pointer"
                         />
                       </div>
                     )}
@@ -1207,7 +1207,7 @@ export default function AttendancePage() {
           await createLeave({
             member_name: mName, leave_type: fd.get('leave_type') as string,
             application_date: new Date().toISOString().split('T')[0], start_date: fd.get('start_date') as string,
-            end_date: fd.get('end_date') as string, days_count: Number(fd.get('days_count')), 
+            end_date: fd.get('end_date') as string, days_count: Number(fd.get('days_count')),
             reason: leaveBulkReasons[mName] || fd.get('reason') as string,
             userName: currentUser?.name || ''
           });
@@ -1332,7 +1332,7 @@ export default function AttendancePage() {
               <div className="flex justify-between items-center mb-4">
                 <h4 className="text-sm font-semibold text-foreground">Annual Leave Balances</h4>
                 {isManager && balancesDisplay.length > 0 && (
-                  <button 
+                  <button
                     onClick={() => {
                       if (selectedLeaveMembers.length === balancesDisplay.length) {
                         setSelectedLeaveMembers([]);
@@ -1353,14 +1353,14 @@ export default function AttendancePage() {
                     <div key={b.name} className="flex justify-between items-center text-sm p-2 hover:bg-muted/50 rounded transition-colors group relative">
                       {isManager && (
                         <div className="mr-3">
-                          <input 
-                            type="checkbox" 
-                            checked={isSelectedForLeave} 
+                          <input
+                            type="checkbox"
+                            checked={isSelectedForLeave}
                             onChange={(e) => {
                               if (e.target.checked) setSelectedLeaveMembers(prev => [...prev, b.name]);
                               else setSelectedLeaveMembers(prev => prev.filter(n => n !== b.name));
-                            }} 
-                            className="w-4 h-4 rounded border-border text-primary focus:ring-primary outline-none cursor-pointer" 
+                            }}
+                            className="w-4 h-4 rounded border-border text-primary focus:ring-primary outline-none cursor-pointer"
                           />
                         </div>
                       )}
@@ -1724,13 +1724,13 @@ export default function AttendancePage() {
             ) : isManager ? (
               <div className="w-full bg-muted/50 border border-border rounded-lg px-3 py-2 text-foreground text-sm font-medium cursor-not-allowed">
                 {selectedLeaveMembers.length > 0 ? (
-                  selectedLeaveMembers.length === 1 
-                    ? selectedLeaveMembers[0] 
+                  selectedLeaveMembers.length === 1
+                    ? selectedLeaveMembers[0]
                     : `${selectedLeaveMembers.length} Employee(s) Selected from sidebar`
                 ) : 'No employees checked in sidebar'}
               </div>
             ) : (
-                <input type="text" readOnly value={currentUser?.name} className="w-full bg-muted/50 border border-border rounded-lg px-3 py-2 text-foreground font-medium outline-none cursor-not-allowed" />
+              <input type="text" readOnly value={currentUser?.name} className="w-full bg-muted/50 border border-border rounded-lg px-3 py-2 text-foreground font-medium outline-none cursor-not-allowed" />
             )}
             {!isManager && !editingLeaveLog && <input type="hidden" name="member_name" value={currentUser?.name} />}
             {!!editingLeaveLog && <input type="hidden" name="member_name" value={editingLeaveLog.member_name} />}
@@ -1770,16 +1770,16 @@ export default function AttendancePage() {
             <div className="space-y-3 mt-4">
               <label className="block text-sm font-medium text-foreground mb-1.5">Individual Reasons <span className="text-muted-foreground font-normal">(required)</span></label>
               <div className="max-h-[160px] overflow-y-auto custom-scrollbar pr-2 space-y-2">
-                {selectedLeavemembersList.map(memberName => (
+                {selectedLeaveMembers.map(memberName => (
                   <div key={memberName} className="flex flex-col gap-1">
                     <span className="text-xs font-semibold text-muted-foreground">{memberName}</span>
                     <input
                       type="text"
                       required
                       value={leaveBulkReasons[memberName] || ''}
-                      onChange={e => setLeaveBulkReasons(prev => ({...prev, [memberName]: e.target.value}))}
-                      className="w-full bg-surface border border-border rounded-lg px-3 py-1.5 text-sm text-foreground focus:ring-1 focus:ring-primary outline-none" 
-                      placeholder={`Reason for ${memberName}...`} 
+                      onChange={e => setLeaveBulkReasons(prev => ({ ...prev, [memberName]: e.target.value }))}
+                      className="w-full bg-surface border border-border rounded-lg px-3 py-1.5 text-sm text-foreground focus:ring-1 focus:ring-primary outline-none"
+                      placeholder={`Reason for ${memberName}...`}
                     />
                   </div>
                 ))}
@@ -1804,13 +1804,13 @@ export default function AttendancePage() {
             ) : isManager ? (
               <div className="w-full bg-muted/50 border border-border rounded-lg px-3 py-2 text-foreground text-sm font-medium cursor-not-allowed">
                 {selectedOtMembers.length > 0 ? (
-                  selectedOtMembers.length === 1 
-                    ? selectedOtMembers[0] 
+                  selectedOtMembers.length === 1
+                    ? selectedOtMembers[0]
                     : `${selectedOtMembers.length} Employee(s) Selected from sidebar`
                 ) : (editingOtLog ? editingOtLog.member_name : 'No employees checked in sidebar')}
               </div>
             ) : (
-                <input type="text" readOnly value={currentUser?.name} className="w-full bg-muted/50 border border-border rounded-lg px-3 py-2 text-foreground font-medium outline-none cursor-not-allowed" />
+              <input type="text" readOnly value={currentUser?.name} className="w-full bg-muted/50 border border-border rounded-lg px-3 py-2 text-foreground font-medium outline-none cursor-not-allowed" />
             )}
             {!isManager && !editingOtLog && <input type="hidden" name="member_name" value={currentUser?.name} />}
           </div>
@@ -1830,50 +1830,50 @@ export default function AttendancePage() {
           <div>
             <label className="block text-sm font-medium text-foreground mb-1.5">Working Hours *</label>
             <div className="flex items-center gap-3">
-               <input name="ot_start_time" type="time" required value={otFormStart} onChange={e => setOtFormStart(e.target.value)} className="flex-1 bg-surface border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:ring-1 focus:ring-primary outline-none" />
-               <span className="text-sm font-medium text-muted-foreground">to</span>
-               <input name="ot_end_time" type="time" required value={otFormEnd} onChange={e => setOtFormEnd(e.target.value)} className="flex-1 bg-surface border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:ring-1 focus:ring-primary outline-none" />
+              <input name="ot_start_time" type="time" required value={otFormStart} onChange={e => setOtFormStart(e.target.value)} className="flex-1 bg-surface border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:ring-1 focus:ring-primary outline-none" />
+              <span className="text-sm font-medium text-muted-foreground">to</span>
+              <input name="ot_end_time" type="time" required value={otFormEnd} onChange={e => setOtFormEnd(e.target.value)} className="flex-1 bg-surface border border-border rounded-lg px-3 py-2 text-sm text-foreground focus:ring-1 focus:ring-primary outline-none" />
             </div>
             {otFormStart && otFormEnd && otFormStart === otFormEnd ? (
-               <div className="mt-2 text-sm font-medium text-destructive">
-                 Start and finish cannot be the same
-               </div>
+              <div className="mt-2 text-sm font-medium text-destructive">
+                Start and finish cannot be the same
+              </div>
             ) : liveOtDiff > 0 ? (
-               <div className="mt-2 text-sm font-medium text-foreground">
-                 {editingOtLog ? (
-                   <div className="bg-muted/50 p-3 rounded-lg border border-border mt-3 space-y-2 relative overflow-hidden">
-                     <div className="absolute top-0 left-0 w-1 h-full bg-amber-500"></div>
-                     <div className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider mb-2">Revision Preview</div>
-                     <div className="grid grid-cols-2 gap-4">
-                       <div className="space-y-1">
-                         <div className="text-[10px] text-muted-foreground font-semibold">Original (Before)</div>
-                         <div className="flex flex-col text-[13px] opacity-70">
-                           <span>⏱️ Jam Mati: {Number(editingOtLog.hours).toFixed(1)}h</span>
-                           <span>✨ Jam Hidup: {calculateJamHidup(Number(editingOtLog.hours), membersList.find(m => m.name === editingOtLog.member_name)?.role || '').toFixed(1)}h</span>
-                         </div>
-                       </div>
-                       <div className="space-y-1 border-l border-border pl-4">
-                         <div className="text-[10px] text-primary font-bold">Revised (After)</div>
-                         <div className="flex flex-col text-[13px] font-medium">
-                           <span className={Number(editingOtLog.hours) !== liveOtDiff ? "text-primary" : "text-foreground"}>⏱️ Jam Mati: {liveOtDiff.toFixed(1)}h</span>
-                           <span className={Number(editingOtLog.hours) !== liveOtDiff ? "text-primary" : "text-foreground"}>✨ Jam Hidup: {calculateJamHidup(liveOtDiff, membersList.find(m => m.name === editingOtLog.member_name)?.role || '').toFixed(1)}h</span>
-                         </div>
-                       </div>
-                     </div>
-                   </div>
-                 ) : (
-                   <div className="flex items-center gap-3 mt-2">
-                     <div className="flex-1">
-                       <span>⏱️ Jam Mati: {liveOtDiff.toFixed(1)}h</span>
-                     </div>
-                     <span className="invisible text-sm font-medium px-2">to</span>
-                     <div className="flex-1">
-                       {(selectedOtMembers.length === 1 || !isManager) && <span>✨ Jam Hidup: {calculateJamHidup(liveOtDiff, membersList.find(m => m.name === (isManager ? selectedOtMembers[0] : currentUser?.name))?.role || '').toFixed(1)}h</span>}
-                     </div>
-                   </div>
-                 )}
-                 {new Date(otFormDate).getDay() === 6 && liveOtDiff > 1 && <div className="text-orange-500 text-xs mt-2 italic">*(1h break deducted for Saturday)</div>}
-               </div>
+              <div className="mt-2 text-sm font-medium text-foreground">
+                {editingOtLog ? (
+                  <div className="bg-muted/50 p-3 rounded-lg border border-border mt-3 space-y-2 relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-1 h-full bg-amber-500"></div>
+                    <div className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider mb-2">Revision Preview</div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <div className="text-[10px] text-muted-foreground font-semibold">Original (Before)</div>
+                        <div className="flex flex-col text-[13px] opacity-70">
+                          <span>⏱️ Jam Mati: {Number(editingOtLog.hours).toFixed(1)}h</span>
+                          <span>✨ Jam Hidup: {calculateJamHidup(Number(editingOtLog.hours), membersList.find(m => m.name === editingOtLog.member_name)?.role || '').toFixed(1)}h</span>
+                        </div>
+                      </div>
+                      <div className="space-y-1 border-l border-border pl-4">
+                        <div className="text-[10px] text-primary font-bold">Revised (After)</div>
+                        <div className="flex flex-col text-[13px] font-medium">
+                          <span className={Number(editingOtLog.hours) !== liveOtDiff ? "text-primary" : "text-foreground"}>⏱️ Jam Mati: {liveOtDiff.toFixed(1)}h</span>
+                          <span className={Number(editingOtLog.hours) !== liveOtDiff ? "text-primary" : "text-foreground"}>✨ Jam Hidup: {calculateJamHidup(liveOtDiff, membersList.find(m => m.name === editingOtLog.member_name)?.role || '').toFixed(1)}h</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3 mt-2">
+                    <div className="flex-1">
+                      <span>⏱️ Jam Mati: {liveOtDiff.toFixed(1)}h</span>
+                    </div>
+                    <span className="invisible text-sm font-medium px-2">to</span>
+                    <div className="flex-1">
+                      {(selectedOtMembers.length === 1 || !isManager) && <span>✨ Jam Hidup: {calculateJamHidup(liveOtDiff, membersList.find(m => m.name === (isManager ? selectedOtMembers[0] : currentUser?.name))?.role || '').toFixed(1)}h</span>}
+                    </div>
+                  </div>
+                )}
+                {new Date(otFormDate).getDay() === 6 && liveOtDiff > 1 && <div className="text-orange-500 text-xs mt-2 italic">*(1h break deducted for Saturday)</div>}
+              </div>
             ) : null}
           </div>
 
@@ -1886,22 +1886,22 @@ export default function AttendancePage() {
             <div className="space-y-3 mt-4">
               <label className="block text-sm font-medium text-foreground mb-1.5">Individual Remarks <span className="text-muted-foreground font-normal">(optional)</span></label>
               <div className="max-h-[160px] overflow-y-auto custom-scrollbar pr-2 space-y-2">
-                {selectedOtmembersList.map(memberName => (
+                {selectedOtMembers.map(memberName => (
                   <div key={memberName} className="flex flex-col gap-1">
                     <span className="text-xs font-semibold text-muted-foreground">{memberName}</span>
                     <input
                       type="text"
-                      value={otBulkReasons[memberName] ?? (Array.isArray(overtimes) ? overtimes : []).find(o => o.member_name === memberName && o.request_date === (editingOtLog?.request_date || otFormDate))?.reason || ''}
-                      onChange={e => setOtBulkReasons(prev => ({...prev, [memberName]: e.target.value}))}
-                      className="w-full bg-surface border border-border rounded-lg px-3 py-1.5 text-sm text-foreground focus:ring-1 focus:ring-primary outline-none" 
-                      placeholder={`Reason for ${memberName}...`} 
+                      value={(otBulkReasons[memberName] ?? (Array.isArray(overtimes) ? overtimes : []).find(o => o.member_name === memberName && o.request_date === (editingOtLog?.request_date || otFormDate))?.reason) || ''}
+                      onChange={e => setOtBulkReasons(prev => ({ ...prev, [memberName]: e.target.value }))}
+                      className="w-full bg-surface border border-border rounded-lg px-3 py-1.5 text-sm text-foreground focus:ring-1 focus:ring-primary outline-none"
+                      placeholder={`Reason for ${memberName}...`}
                     />
                   </div>
                 ))}
               </div>
             </div>
           )}
-          
+
           <div className="pt-3 flex justify-end gap-3 border-t border-border mt-3">
             <button type="button" onClick={() => { setIsOtModalOpen(false); setSelectedOtMembers([]); setOtMemberSearch(''); setIsOtEmployeeDropdownOpen(false); }} className="px-5 py-2.5 border border-border rounded-lg text-sm font-medium text-foreground hover:bg-surface transition-colors">Cancel</button>
             <button type="submit" disabled={!editingOtLog && isManager && selectedOtMembers.length === 0} className="px-6 py-2.5 bg-primary hover:bg-primary/90 text-white rounded-lg text-sm font-bold shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-all">Save</button>
