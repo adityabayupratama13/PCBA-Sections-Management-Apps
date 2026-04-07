@@ -10,10 +10,13 @@
   },
   "dependencies": {
     "@types/better-sqlite3": "^7.6.13",
+    "@types/file-saver": "^2.0.7",
     "animejs": "^3.2.2",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "driver.js": "^1.4.0",
+    "exceljs": "^4.4.0",
+    "file-saver": "^2.0.5",
     "framer-motion": "^12.35.2",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.7",
