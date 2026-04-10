@@ -1610,7 +1610,7 @@ export default function AttendancePage() {
             >
               {activeTab === 'roster' && <RosterTab />}
               {activeTab === 'overtime' && <OtTab />}
-              {activeTab === 'leave' && <LeaveTab />}
+              {activeTab === 'leave' && LeaveTab()}
               {activeTab === 'employee-status' && <EmployeeStatusTab />}
             </motion.div>
           </AnimatePresence>
