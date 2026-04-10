@@ -125,6 +125,7 @@ export default function AttendancePage() {
 
   // Tab 3: Leave State
   const [selectedLeaveMembers, setSelectedLeaveMembers] = useState<string[]>([]);
+  const [leaveSearch, setLeaveSearch] = useState('');
   const [leaveBulkReasons, setLeaveBulkReasons] = useState<Record<string, string>>({});
   const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
   const [isBalanceModalOpen, setIsBalanceModalOpen] = useState(false);
@@ -574,74 +575,7 @@ export default function AttendancePage() {
             </form>
           </Modal>
 
-          {/* Floating Bulk Action Bar */}
-          <AnimatePresence>
-            {selectedBulkMembers.length > 0 && (
-              <motion.div initial={{ y: 100, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 100, opacity: 0 }} className="fixed bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 z-50 bg-background/95 backdrop-blur shadow-2xl border border-border p-3 sm:p-4 rounded-2xl flex flex-col gap-3 sm:gap-4 w-[96vw] max-w-2xl overflow-y-auto max-h-[85vh] custom-scrollbar">
-                {/* Header Section */}
-                <div className="flex flex-col gap-2 w-full border-b border-border pl-1">
-                  <div className="text-sm font-semibold text-foreground px-2 py-1 mb-1">
-                    <CheckCircle2 className="w-4 h-4 inline-block -mt-0.5 text-primary mr-1" /> {selectedBulkMembers.length} employee(s) selected
-                  </div>
-
-                  <div className="flex gap-2 relative z-0">
-                    <button onClick={() => setBulkTabMode('all')} className={`flex items-center gap-2 px-4 py-2 border-b-2 font-medium text-sm transition-colors ${bulkTabMode === 'all' ? 'border-primary text-primary bg-primary/5 rounded-t-lg' : 'border-transparent text-muted-foreground hover:bg-muted rounded-t-lg'}`}>
-                      <span>📅</span> Change All Week
-                    </button>
-                    <button onClick={() => setBulkTabMode('specific')} className={`flex items-center gap-2 px-4 py-2 border-b-2 font-medium text-sm transition-colors ${bulkTabMode === 'specific' ? 'border-primary text-primary bg-primary/5 rounded-t-lg' : 'border-transparent text-muted-foreground hover:bg-muted rounded-t-lg'}`}>
-                      <span>📌</span> Change Specific Days
-                    </button>
-                  </div>
-                </div>
-
-                {/* Mode Layout */}
-                <div className="w-full pt-1 px-1">
-                  {bulkTabMode === 'specific' && (
-                    <div className="mb-4">
-                      <div className="text-xs font-semibold text-foreground mb-2">Select days:</div>
-                      <div className="flex flex-wrap gap-2">
-                        {rosterDates.map(d => {
-                          const dateStr = format(d, 'yyyy-MM-dd');
-                          const isSelected = bulkTargetDays.includes(dateStr);
-                          return (
-                            <button
-                              key={dateStr}
-                              onClick={() => {
-                                if (isSelected) setBulkTargetDays(bulkTargetDays.filter(x => x !== dateStr));
-                                else setBulkTargetDays([...bulkTargetDays, dateStr]);
-                              }}
-                              className={`h-[44px] px-3 font-medium text-sm border rounded-lg transition-colors flex-[1_1_auto] sm:flex-none flex items-center justify-center min-w-[70px] ${isSelected ? 'bg-primary text-white border-primary shadow-sm' : 'bg-background border-border text-foreground hover:bg-muted'}`}
-                            >
-                              {format(d, 'EEE, dd')}
-                            </button>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="text-xs font-semibold text-foreground mb-2">
-                    {bulkTabMode === 'all' ? 'Change all working days to:' : 'Change selected days to:'}
-                  </div>
-                </div>
-
-                {/* Actions Section */}
-                <div className="flex flex-col sm:flex-row items-center gap-3 w-full border border-border bg-surface p-2 rounded-lg">
-                  <select value={bulkTargetShift} onChange={e => setBulkTargetShift(e.target.value)} className="w-full sm:flex-1 h-[44px] bg-background border border-border/50 rounded px-3 text-sm focus:ring-primary focus:border-primary outline-none">
-                    <option value="" disabled>Change to Shift...</option>
-                    {SHIFT_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
-                  </select>
-                  <div className="flex items-center gap-2 w-full sm:w-auto mt-2 sm:mt-0">
-                    <button onClick={() => { setSelectedBulkMembers([]); setBulkTargetDays([]); setBulkTabMode('all'); }} disabled={savingShift} className="flex-1 sm:flex-none px-5 h-[44px] text-sm font-medium hover:bg-muted rounded text-center disabled:opacity-50 transition-colors">Cancel</button>
-                    <button onClick={handleBulkChangeSubmit} disabled={(!bulkTargetShift || savingShift || (bulkTabMode === 'specific' && bulkTargetDays.length === 0))} className={`flex-1 sm:flex-none px-8 h-[44px] text-sm font-bold text-white rounded transition-colors whitespace-nowrap shadow-md flex items-center justify-center gap-2 ${savingShift ? 'bg-primary/70 cursor-not-allowed' : 'bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed'}`}>
-                      {savingShift && !bulkHolidayWarning ? <><Loader2 className="w-4 h-4 animate-spin" /><span>Applying...</span></> : <span>Apply</span>}
-                    </button>
-                  </div>
-                </div>
-
-              </motion.div>
-            )}
-          </AnimatePresence>
+          
 
           {/* Holiday Confirmation Modal (Simplified) */}
           <Modal isOpen={!!bulkHolidayWarning} onClose={() => { if (!savingShift) { setBulkHolidayWarning(null); setBulkError(null); } }} title="⚠️ Holiday Detected">
@@ -868,13 +802,6 @@ export default function AttendancePage() {
       };
     });
 
-    useEffect(() => {
-      if (stats.length > 0 && (!selectedOtMember || !stats.find(s => s.member.name === selectedOtMember))) {
-        setSelectedOtMember(stats[0].member.name);
-      }
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [stats, selectedOtMember]);
-
     const exportOt = (type: 'excel' | 'pdf') => {
       const headers = ['Member', 'Role', 'Date & Desc', 'Time Range', 'Jam Mati', 'Jam Hidup'];
       const dataObj: Record<string, string | number>[] = [];
@@ -953,7 +880,7 @@ export default function AttendancePage() {
             <div className="flex lg:flex-col gap-2 overflow-x-auto lg:overflow-y-auto max-h-[600px] custom-scrollbar pb-2 lg:pb-0">
               {stats.map(s => {
                 const isSelectedForOt = selectedOtMembers.includes(s.member.name);
-                const isActive = selectedOtMember === s.member.name;
+                const isActive = currentMemberStat?.member?.name === s.member.name;
                 return (
                   <div
                     key={s.member.id}
@@ -1294,7 +1221,7 @@ export default function AttendancePage() {
   };
 
   const LeaveTab = () => {
-    const balancesDisplay = membersList.filter(m => m.status === 'Active' && m.member_type !== 'Management').map(m => {
+    const balancesDisplay = membersList.filter(m => m.status === 'Active' && m.member_type !== 'Management' && m.name.toLowerCase().includes(leaveSearch.toLowerCase())).map(m => {
       const bObj = balances?.find(b => b.member_name === m.name);
       return {
         name: m.name,
@@ -1320,9 +1247,21 @@ export default function AttendancePage() {
               <button onClick={() => exportLeaves('pdf')} className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-md border border-red-600/20 text-red-600 hover:bg-red-600/10 transition-colors"><Download className="w-3.5 h-3.5" /> PDF</button>
             </div>
           </div>
-          <button onClick={() => { setEditingLeaveLog(null); setIsLeaveModalOpen(true); }} className="px-4 py-2 bg-primary hover:bg-primary/90 text-white text-sm font-medium rounded-lg shadow-sm">
-            Apply for Leave
-          </button>
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Search member..."
+                value={leaveSearch}
+                onChange={e => setLeaveSearch(e.target.value)}
+                className="w-48 bg-surface border border-border rounded-lg pl-9 pr-3 py-2 text-sm text-foreground focus:ring-1 focus:ring-primary outline-none"
+              />
+            </div>
+            <button onClick={() => { setEditingLeaveLog(null); setIsLeaveModalOpen(true); }} className="px-4 py-2 bg-primary hover:bg-primary/90 text-white text-sm font-medium rounded-lg shadow-sm whitespace-nowrap">
+              Apply for Leave
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -1395,7 +1334,7 @@ export default function AttendancePage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {leaves.map(l => (
+                  {leaves.filter(l => l.member_name.toLowerCase().includes(leaveSearch.toLowerCase())).map(l => (
                     <tr key={l.id} className="hover:bg-primary/5 transition-colors">
                       <td className="px-4 py-3 font-medium text-foreground">{l.member_name}</td>
                       <td className="px-4 py-3">
@@ -1404,7 +1343,7 @@ export default function AttendancePage() {
                         <div className="text-[10px] text-muted-foreground italic truncate max-w-[150px]">{l.reason}</div>
                       </td>
                       <td className="px-4 py-3">
-                        <div className="text-foreground">{l.days_count} Days</div>
+                        <div className="text-foreground">{Number(l.days_count)} {Number(l.days_count) <= 1 ? 'Day' : 'Days'}</div>
                         <div className="text-[10px] text-muted-foreground">{format(new Date(l.start_date), 'dd MMM')} - {format(new Date(l.end_date), 'dd MMM yyyy')}</div>
                       </td>
                       <td className="px-4 py-3">
@@ -1662,10 +1601,10 @@ export default function AttendancePage() {
               transition={{ duration: 0.2 }}
               className="h-full"
             >
-              {activeTab === 'roster' && <RosterTab />}
-              {activeTab === 'overtime' && <OtTab />}
-              {activeTab === 'leave' && <LeaveTab />}
-              {activeTab === 'employee-status' && <EmployeeStatusTab />}
+              {activeTab === 'roster' && RosterTab()}
+              {activeTab === 'overtime' && OtTab()}
+              {activeTab === 'leave' && LeaveTab()}
+              {activeTab === 'employee-status' && EmployeeStatusTab()}
             </motion.div>
           </AnimatePresence>
         </div>
@@ -1990,6 +1929,75 @@ export default function AttendancePage() {
         </form>
       </Modal>
 
+
+      {/* Floating Bulk Action Bar */}
+          <AnimatePresence>
+            {selectedBulkMembers.length > 0 && (
+              <motion.div initial={{ y: 100, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 100, opacity: 0 }} className="fixed bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 z-50 bg-background/95 backdrop-blur shadow-2xl border border-border p-3 sm:p-4 rounded-2xl flex flex-col gap-3 sm:gap-4 w-[96vw] max-w-2xl overflow-y-auto max-h-[85vh] custom-scrollbar">
+                {/* Header Section */}
+                <div className="flex flex-col gap-2 w-full border-b border-border pl-1">
+                  <div className="text-sm font-semibold text-foreground px-2 py-1 mb-1">
+                    <CheckCircle2 className="w-4 h-4 inline-block -mt-0.5 text-primary mr-1" /> {selectedBulkMembers.length} employee(s) selected
+                  </div>
+
+                  <div className="flex gap-2 relative z-0">
+                    <button onClick={() => setBulkTabMode('all')} className={`flex items-center gap-2 px-4 py-2 border-b-2 font-medium text-sm transition-colors ${bulkTabMode === 'all' ? 'border-primary text-primary bg-primary/5 rounded-t-lg' : 'border-transparent text-muted-foreground hover:bg-muted rounded-t-lg'}`}>
+                      <span>📅</span> Change All Week
+                    </button>
+                    <button onClick={() => setBulkTabMode('specific')} className={`flex items-center gap-2 px-4 py-2 border-b-2 font-medium text-sm transition-colors ${bulkTabMode === 'specific' ? 'border-primary text-primary bg-primary/5 rounded-t-lg' : 'border-transparent text-muted-foreground hover:bg-muted rounded-t-lg'}`}>
+                      <span>📌</span> Change Specific Days
+                    </button>
+                  </div>
+                </div>
+
+                {/* Mode Layout */}
+                <div className="w-full pt-1 px-1">
+                  {bulkTabMode === 'specific' && (
+                    <div className="mb-4">
+                      <div className="text-xs font-semibold text-foreground mb-2">Select days:</div>
+                      <div className="flex flex-wrap gap-2">
+                        {rosterDates.map(d => {
+                          const dateStr = format(d, 'yyyy-MM-dd');
+                          const isSelected = bulkTargetDays.includes(dateStr);
+                          return (
+                            <button
+                              key={dateStr}
+                              onClick={() => {
+                                if (isSelected) setBulkTargetDays(bulkTargetDays.filter(x => x !== dateStr));
+                                else setBulkTargetDays([...bulkTargetDays, dateStr]);
+                              }}
+                              className={`h-[44px] px-3 font-medium text-sm border rounded-lg transition-colors flex-[1_1_auto] sm:flex-none flex items-center justify-center min-w-[70px] ${isSelected ? 'bg-primary text-white border-primary shadow-sm' : 'bg-background border-border text-foreground hover:bg-muted'}`}
+                            >
+                              {format(d, 'EEE, dd')}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="text-xs font-semibold text-foreground mb-2">
+                    {bulkTabMode === 'all' ? 'Change all working days to:' : 'Change selected days to:'}
+                  </div>
+                </div>
+
+                {/* Actions Section */}
+                <div className="flex flex-col sm:flex-row items-center gap-3 w-full border border-border bg-surface p-2 rounded-lg">
+                  <select value={bulkTargetShift} onChange={e => setBulkTargetShift(e.target.value)} className="w-full sm:flex-1 h-[44px] bg-background border border-border/50 rounded px-3 text-sm focus:ring-primary focus:border-primary outline-none">
+                    <option value="" disabled>Change to Shift...</option>
+                    {SHIFT_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+                  </select>
+                  <div className="flex items-center gap-2 w-full sm:w-auto mt-2 sm:mt-0">
+                    <button onClick={() => { setSelectedBulkMembers([]); setBulkTargetDays([]); setBulkTabMode('all'); }} disabled={savingShift} className="flex-1 sm:flex-none px-5 h-[44px] text-sm font-medium hover:bg-muted rounded text-center disabled:opacity-50 transition-colors">Cancel</button>
+                    <button onClick={handleBulkChangeSubmit} disabled={(!bulkTargetShift || savingShift || (bulkTabMode === 'specific' && bulkTargetDays.length === 0))} className={`flex-1 sm:flex-none px-8 h-[44px] text-sm font-bold text-white rounded transition-colors whitespace-nowrap shadow-md flex items-center justify-center gap-2 ${savingShift ? 'bg-primary/70 cursor-not-allowed' : 'bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed'}`}>
+                      {savingShift && !bulkHolidayWarning ? <><Loader2 className="w-4 h-4 animate-spin" /><span>Applying...</span></> : <span>Apply</span>}
+                    </button>
+                  </div>
+                </div>
+
+              </motion.div>
+            )}
+          </AnimatePresence>
     </div>
   );
 }

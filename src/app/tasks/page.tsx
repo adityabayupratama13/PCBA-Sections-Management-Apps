@@ -23,6 +23,7 @@ interface Task {
   assignee: string;
   initials: string;
   due_date: string;
+  actual_completion_date?: string;
   resolution?: string;
   attachments?: string; // JSON array string
 }
@@ -91,11 +92,11 @@ export default function TasksPage() {
     doc.text(`Generated on: ${new Date().toLocaleString()}`, 14, 32);
     doc.text(`Total Tasks: ${filteredTasks.length}`, 14, 38);
 
-    const tableData = filteredTasks.map(t => [t.id, t.title, t.status, t.priority, t.assignee, t.due_date ? new Date(t.due_date).toLocaleDateString() : '-']);
+    const tableData = filteredTasks.map(t => [t.id, t.title, t.status, t.priority, t.assignee, t.due_date ? new Date(t.due_date).toLocaleDateString() : '-', t.actual_completion_date ? new Date(t.actual_completion_date).toLocaleDateString() : '-']);
     
     autoTable(doc, { 
       startY: 45, 
-      head: [['ID', 'Title', 'Status', 'Priority', 'Assignees', 'Due Date']], 
+      head: [['ID', 'Title', 'Status', 'Priority', 'Assignees', 'Due Date', 'Completed']], 
       body: tableData,
       theme: 'grid',
       headStyles: { fillColor: [59, 130, 246], textColor: 255, fontStyle: 'bold' },
@@ -109,7 +110,7 @@ export default function TasksPage() {
 
   const exportExcel = () => {
     const ws = XLSX.utils.json_to_sheet(filteredTasks.map(t => ({ 
-      ID: t.id, Title: t.title, Status: t.status, Priority: t.priority, Assignees: t.assignee, 'Due Date': t.due_date, Resolution: t.resolution 
+      ID: t.id, Title: t.title, Status: t.status, Priority: t.priority, Assignees: t.assignee, 'Due Date': t.due_date, 'Actual Completion': t.actual_completion_date || '', Resolution: t.resolution 
     })));
     
     // Set auto column widths for Excel
@@ -134,7 +135,7 @@ export default function TasksPage() {
   const assignees = Array.from(new Set(tasks.flatMap(t => t.assignee.split(', '))));
 
   const openAddModal = (status: TaskState = 'Backlog') => {
-    setEditingTask({ id: 0, title: '', status, priority: 'Medium', assignee: '', initials: '', due_date: '', resolution: '', attachments: '[]' });
+    setEditingTask({ id: 0, title: '', status, priority: 'Medium', assignee: '', initials: '', due_date: '', actual_completion_date: '', resolution: '', attachments: '[]' });
     setSelectedAssignees([]);
     setUploadedFiles([]);
     setTaskComments([]);
@@ -163,7 +164,11 @@ export default function TasksPage() {
   const handleStatusChange = async (taskId: number, newStatus: TaskState) => {
     const task = tasks.find(t => t.id === taskId);
     if (!task) return;
-    await update({ ...task, status: newStatus, dueDate: task.due_date, userName: currentUser?.name } as unknown as Task & Record<string, unknown>);
+    // Auto-fill actual_completion_date when dragging to Done (if not already set)
+    const actualCompletionDate = (newStatus === 'Done' && !task.actual_completion_date)
+      ? new Date().toISOString().split('T')[0]
+      : task.actual_completion_date || '';
+    await update({ ...task, status: newStatus, dueDate: task.due_date, actualCompletionDate, userName: currentUser?.name } as unknown as Task & Record<string, unknown>);
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -172,13 +177,20 @@ export default function TasksPage() {
     const formData = new FormData(e.target as HTMLFormElement);
     const assigneeStr = selectedAssignees.join(', ');
     const initials = selectedAssignees.map(n => n.substring(0, 2).toUpperCase()).join(', ');
+    const statusVal = formData.get('status') as string;
+    // Auto-fill actual_completion_date if status is Done and field is empty
+    let actualCompletionVal = formData.get('actualCompletionDate') as string;
+    if (statusVal === 'Done' && !actualCompletionVal) {
+      actualCompletionVal = new Date().toISOString().split('T')[0];
+    }
     const payload = {
       title: formData.get('title') as string,
-      status: formData.get('status') as string,
+      status: statusVal,
       priority: formData.get('priority') as string,
       assignee: assigneeStr,
       initials: initials,
       dueDate: formData.get('dueDate') as string,
+      actualCompletionDate: actualCompletionVal || '',
       resolution: formData.get('resolution') as string,
       attachments: JSON.stringify(uploadedFiles),
       comments: JSON.stringify(taskComments),
@@ -325,6 +337,16 @@ export default function TasksPage() {
                   if (diffDays > 1) isStale = true;
                 }
 
+                // Check if task was completed after the due date
+                let isCompletedLate = false;
+                let lateDays = 0;
+                if (task.status === 'Done' && task.due_date && task.actual_completion_date) {
+                  const dueMs = new Date(task.due_date).getTime();
+                  const completedMs = new Date(task.actual_completion_date).getTime();
+                  lateDays = Math.ceil((completedMs - dueMs) / (1000 * 3600 * 24));
+                  if (lateDays > 0) isCompletedLate = true;
+                }
+
                 return (
                   <KanbanCard key={task.id} id={task.id}
                     onEdit={() => openEditModal(task)} onDelete={() => setDeleteTarget(task)}>
@@ -339,6 +361,12 @@ export default function TasksPage() {
                       </div>
                     )}
 
+                    {isCompletedLate && (
+                      <div className="mb-2 inline-flex items-center rounded-sm bg-warning/10 px-1.5 py-0.5 text-[10px] font-medium text-warning ring-1 ring-inset ring-warning/20">
+                        ⏰ Completed Late ({lateDays} {lateDays === 1 ? 'day' : 'days'})
+                      </div>
+                    )}
+
                     <div className="flex items-center justify-between mt-3">
                       <div className="flex items-center gap-1">
                         <Users className="w-3 h-3 text-muted-foreground" />
@@ -346,11 +374,18 @@ export default function TasksPage() {
                           {task.assignee.split(', ').filter(a => allMembers.some(m => m.name === a) || a === 'Unassigned').join(', ') || 'Unassigned'}
                         </span>
                       </div>
-                      {task.due_date && (
-                        <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                          <CalendarIcon className="w-3 h-3" />{new Date(task.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                        </span>
-                      )}
+                      <div className="flex items-center gap-2.5 flex-shrink-0">
+                        {task.due_date && (
+                          <span className="text-[10px] text-muted-foreground flex items-center gap-1 whitespace-nowrap" title="Due Date">
+                            <CalendarIcon className="w-3 h-3 flex-shrink-0" /><span className="opacity-60">Due:</span> {new Date(task.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                          </span>
+                        )}
+                        {task.actual_completion_date && task.status === 'Done' && (
+                          <span className={`text-[10px] flex items-center gap-1 whitespace-nowrap ${isCompletedLate ? 'text-warning' : 'text-success'}`} title={`Completed: ${new Date(task.actual_completion_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`}>
+                            <Check className="w-3 h-3 flex-shrink-0" /><span className="opacity-60">Done:</span> {new Date(task.actual_completion_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </KanbanCard>
                 )
@@ -406,6 +441,12 @@ export default function TasksPage() {
           <div>
             <label className="block text-sm font-medium text-muted-foreground mb-1.5">Due Date</label>
             <input name="dueDate" type="date" defaultValue={editingTask?.due_date || new Date().toISOString().split('T')[0]} className={inputClass} />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-muted-foreground mb-1.5">Actual Completion Date</label>
+            <input name="actualCompletionDate" type="date" defaultValue={editingTask?.actual_completion_date || ''} className={inputClass} />
+            <p className="text-[10px] text-muted-foreground mt-1">Auto-fills with today&apos;s date when status is set to Done.</p>
           </div>
 
           <div className="border-t border-border pt-4 mt-2">
