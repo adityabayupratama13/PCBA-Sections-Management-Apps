@@ -125,6 +125,7 @@ export default function AttendancePage() {
 
   // Tab 3: Leave State
   const [selectedLeaveMembers, setSelectedLeaveMembers] = useState<string[]>([]);
+  const [leaveSearch, setLeaveSearch] = useState('');
   const [leaveBulkReasons, setLeaveBulkReasons] = useState<Record<string, string>>({});
   const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
   const [isBalanceModalOpen, setIsBalanceModalOpen] = useState(false);
@@ -1227,7 +1228,7 @@ export default function AttendancePage() {
   };
 
   const LeaveTab = () => {
-    const balancesDisplay = membersList.filter(m => m.status === 'Active' && m.member_type !== 'Management').map(m => {
+    const balancesDisplay = membersList.filter(m => m.status === 'Active' && m.member_type !== 'Management' && m.name.toLowerCase().includes(leaveSearch.toLowerCase())).map(m => {
       const bObj = balances?.find(b => b.member_name === m.name);
       return {
         name: m.name,
@@ -1253,9 +1254,21 @@ export default function AttendancePage() {
               <button onClick={() => exportLeaves('pdf')} className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-md border border-red-600/20 text-red-600 hover:bg-red-600/10 transition-colors"><Download className="w-3.5 h-3.5" /> PDF</button>
             </div>
           </div>
-          <button onClick={() => { setEditingLeaveLog(null); setIsLeaveModalOpen(true); }} className="px-4 py-2 bg-primary hover:bg-primary/90 text-white text-sm font-medium rounded-lg shadow-sm">
-            Apply for Leave
-          </button>
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Search member..."
+                value={leaveSearch}
+                onChange={e => setLeaveSearch(e.target.value)}
+                className="w-48 bg-surface border border-border rounded-lg pl-9 pr-3 py-2 text-sm text-foreground focus:ring-1 focus:ring-primary outline-none"
+              />
+            </div>
+            <button onClick={() => { setEditingLeaveLog(null); setIsLeaveModalOpen(true); }} className="px-4 py-2 bg-primary hover:bg-primary/90 text-white text-sm font-medium rounded-lg shadow-sm whitespace-nowrap">
+              Apply for Leave
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -1328,7 +1341,7 @@ export default function AttendancePage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {leaves.map(l => (
+                  {leaves.filter(l => l.member_name.toLowerCase().includes(leaveSearch.toLowerCase())).map(l => (
                     <tr key={l.id} className="hover:bg-primary/5 transition-colors">
                       <td className="px-4 py-3 font-medium text-foreground">{l.member_name}</td>
                       <td className="px-4 py-3">
