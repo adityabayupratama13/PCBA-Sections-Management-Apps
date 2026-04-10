@@ -574,74 +574,7 @@ export default function AttendancePage() {
             </form>
           </Modal>
 
-          {/* Floating Bulk Action Bar */}
-          <AnimatePresence>
-            {selectedBulkMembers.length > 0 && (
-              <motion.div initial={{ y: 100, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 100, opacity: 0 }} className="fixed bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 z-50 bg-background/95 backdrop-blur shadow-2xl border border-border p-3 sm:p-4 rounded-2xl flex flex-col gap-3 sm:gap-4 w-[96vw] max-w-2xl overflow-y-auto max-h-[85vh] custom-scrollbar">
-                {/* Header Section */}
-                <div className="flex flex-col gap-2 w-full border-b border-border pl-1">
-                  <div className="text-sm font-semibold text-foreground px-2 py-1 mb-1">
-                    <CheckCircle2 className="w-4 h-4 inline-block -mt-0.5 text-primary mr-1" /> {selectedBulkMembers.length} employee(s) selected
-                  </div>
-
-                  <div className="flex gap-2 relative z-0">
-                    <button onClick={() => setBulkTabMode('all')} className={`flex items-center gap-2 px-4 py-2 border-b-2 font-medium text-sm transition-colors ${bulkTabMode === 'all' ? 'border-primary text-primary bg-primary/5 rounded-t-lg' : 'border-transparent text-muted-foreground hover:bg-muted rounded-t-lg'}`}>
-                      <span>📅</span> Change All Week
-                    </button>
-                    <button onClick={() => setBulkTabMode('specific')} className={`flex items-center gap-2 px-4 py-2 border-b-2 font-medium text-sm transition-colors ${bulkTabMode === 'specific' ? 'border-primary text-primary bg-primary/5 rounded-t-lg' : 'border-transparent text-muted-foreground hover:bg-muted rounded-t-lg'}`}>
-                      <span>📌</span> Change Specific Days
-                    </button>
-                  </div>
-                </div>
-
-                {/* Mode Layout */}
-                <div className="w-full pt-1 px-1">
-                  {bulkTabMode === 'specific' && (
-                    <div className="mb-4">
-                      <div className="text-xs font-semibold text-foreground mb-2">Select days:</div>
-                      <div className="flex flex-wrap gap-2">
-                        {rosterDates.map(d => {
-                          const dateStr = format(d, 'yyyy-MM-dd');
-                          const isSelected = bulkTargetDays.includes(dateStr);
-                          return (
-                            <button
-                              key={dateStr}
-                              onClick={() => {
-                                if (isSelected) setBulkTargetDays(bulkTargetDays.filter(x => x !== dateStr));
-                                else setBulkTargetDays([...bulkTargetDays, dateStr]);
-                              }}
-                              className={`h-[44px] px-3 font-medium text-sm border rounded-lg transition-colors flex-[1_1_auto] sm:flex-none flex items-center justify-center min-w-[70px] ${isSelected ? 'bg-primary text-white border-primary shadow-sm' : 'bg-background border-border text-foreground hover:bg-muted'}`}
-                            >
-                              {format(d, 'EEE, dd')}
-                            </button>
-                          )
-                        })}
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="text-xs font-semibold text-foreground mb-2">
-                    {bulkTabMode === 'all' ? 'Change all working days to:' : 'Change selected days to:'}
-                  </div>
-                </div>
-
-                {/* Actions Section */}
-                <div className="flex flex-col sm:flex-row items-center gap-3 w-full border border-border bg-surface p-2 rounded-lg">
-                  <select value={bulkTargetShift} onChange={e => setBulkTargetShift(e.target.value)} className="w-full sm:flex-1 h-[44px] bg-background border border-border/50 rounded px-3 text-sm focus:ring-primary focus:border-primary outline-none">
-                    <option value="" disabled>Change to Shift...</option>
-                    {SHIFT_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
-                  </select>
-                  <div className="flex items-center gap-2 w-full sm:w-auto mt-2 sm:mt-0">
-                    <button onClick={() => { setSelectedBulkMembers([]); setBulkTargetDays([]); setBulkTabMode('all'); }} disabled={savingShift} className="flex-1 sm:flex-none px-5 h-[44px] text-sm font-medium hover:bg-muted rounded text-center disabled:opacity-50 transition-colors">Cancel</button>
-                    <button onClick={handleBulkChangeSubmit} disabled={(!bulkTargetShift || savingShift || (bulkTabMode === 'specific' && bulkTargetDays.length === 0))} className={`flex-1 sm:flex-none px-8 h-[44px] text-sm font-bold text-white rounded transition-colors whitespace-nowrap shadow-md flex items-center justify-center gap-2 ${savingShift ? 'bg-primary/70 cursor-not-allowed' : 'bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed'}`}>
-                      {savingShift && !bulkHolidayWarning ? <><Loader2 className="w-4 h-4 animate-spin" /><span>Applying...</span></> : <span>Apply</span>}
-                    </button>
-                  </div>
-                </div>
-
-              </motion.div>
-            )}
-          </AnimatePresence>
+          
 
           {/* Holiday Confirmation Modal (Simplified) */}
           <Modal isOpen={!!bulkHolidayWarning} onClose={() => { if (!savingShift) { setBulkHolidayWarning(null); setBulkError(null); } }} title="⚠️ Holiday Detected">
@@ -1404,7 +1337,7 @@ export default function AttendancePage() {
                         <div className="text-[10px] text-muted-foreground italic truncate max-w-[150px]">{l.reason}</div>
                       </td>
                       <td className="px-4 py-3">
-                        <div className="text-foreground">{l.days_count} Days</div>
+                        <div className="text-foreground">{Number(l.days_count)} {Number(l.days_count) <= 1 ? 'Day' : 'Days'}</div>
                         <div className="text-[10px] text-muted-foreground">{format(new Date(l.start_date), 'dd MMM')} - {format(new Date(l.end_date), 'dd MMM yyyy')}</div>
                       </td>
                       <td className="px-4 py-3">
@@ -1990,6 +1923,75 @@ export default function AttendancePage() {
         </form>
       </Modal>
 
+
+      {/* Floating Bulk Action Bar */}
+          <AnimatePresence>
+            {selectedBulkMembers.length > 0 && (
+              <motion.div initial={{ y: 100, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 100, opacity: 0 }} className="fixed bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 z-50 bg-background/95 backdrop-blur shadow-2xl border border-border p-3 sm:p-4 rounded-2xl flex flex-col gap-3 sm:gap-4 w-[96vw] max-w-2xl overflow-y-auto max-h-[85vh] custom-scrollbar">
+                {/* Header Section */}
+                <div className="flex flex-col gap-2 w-full border-b border-border pl-1">
+                  <div className="text-sm font-semibold text-foreground px-2 py-1 mb-1">
+                    <CheckCircle2 className="w-4 h-4 inline-block -mt-0.5 text-primary mr-1" /> {selectedBulkMembers.length} employee(s) selected
+                  </div>
+
+                  <div className="flex gap-2 relative z-0">
+                    <button onClick={() => setBulkTabMode('all')} className={`flex items-center gap-2 px-4 py-2 border-b-2 font-medium text-sm transition-colors ${bulkTabMode === 'all' ? 'border-primary text-primary bg-primary/5 rounded-t-lg' : 'border-transparent text-muted-foreground hover:bg-muted rounded-t-lg'}`}>
+                      <span>📅</span> Change All Week
+                    </button>
+                    <button onClick={() => setBulkTabMode('specific')} className={`flex items-center gap-2 px-4 py-2 border-b-2 font-medium text-sm transition-colors ${bulkTabMode === 'specific' ? 'border-primary text-primary bg-primary/5 rounded-t-lg' : 'border-transparent text-muted-foreground hover:bg-muted rounded-t-lg'}`}>
+                      <span>📌</span> Change Specific Days
+                    </button>
+                  </div>
+                </div>
+
+                {/* Mode Layout */}
+                <div className="w-full pt-1 px-1">
+                  {bulkTabMode === 'specific' && (
+                    <div className="mb-4">
+                      <div className="text-xs font-semibold text-foreground mb-2">Select days:</div>
+                      <div className="flex flex-wrap gap-2">
+                        {rosterDates.map(d => {
+                          const dateStr = format(d, 'yyyy-MM-dd');
+                          const isSelected = bulkTargetDays.includes(dateStr);
+                          return (
+                            <button
+                              key={dateStr}
+                              onClick={() => {
+                                if (isSelected) setBulkTargetDays(bulkTargetDays.filter(x => x !== dateStr));
+                                else setBulkTargetDays([...bulkTargetDays, dateStr]);
+                              }}
+                              className={`h-[44px] px-3 font-medium text-sm border rounded-lg transition-colors flex-[1_1_auto] sm:flex-none flex items-center justify-center min-w-[70px] ${isSelected ? 'bg-primary text-white border-primary shadow-sm' : 'bg-background border-border text-foreground hover:bg-muted'}`}
+                            >
+                              {format(d, 'EEE, dd')}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="text-xs font-semibold text-foreground mb-2">
+                    {bulkTabMode === 'all' ? 'Change all working days to:' : 'Change selected days to:'}
+                  </div>
+                </div>
+
+                {/* Actions Section */}
+                <div className="flex flex-col sm:flex-row items-center gap-3 w-full border border-border bg-surface p-2 rounded-lg">
+                  <select value={bulkTargetShift} onChange={e => setBulkTargetShift(e.target.value)} className="w-full sm:flex-1 h-[44px] bg-background border border-border/50 rounded px-3 text-sm focus:ring-primary focus:border-primary outline-none">
+                    <option value="" disabled>Change to Shift...</option>
+                    {SHIFT_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+                  </select>
+                  <div className="flex items-center gap-2 w-full sm:w-auto mt-2 sm:mt-0">
+                    <button onClick={() => { setSelectedBulkMembers([]); setBulkTargetDays([]); setBulkTabMode('all'); }} disabled={savingShift} className="flex-1 sm:flex-none px-5 h-[44px] text-sm font-medium hover:bg-muted rounded text-center disabled:opacity-50 transition-colors">Cancel</button>
+                    <button onClick={handleBulkChangeSubmit} disabled={(!bulkTargetShift || savingShift || (bulkTabMode === 'specific' && bulkTargetDays.length === 0))} className={`flex-1 sm:flex-none px-8 h-[44px] text-sm font-bold text-white rounded transition-colors whitespace-nowrap shadow-md flex items-center justify-center gap-2 ${savingShift ? 'bg-primary/70 cursor-not-allowed' : 'bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed'}`}>
+                      {savingShift && !bulkHolidayWarning ? <><Loader2 className="w-4 h-4 animate-spin" /><span>Applying...</span></> : <span>Apply</span>}
+                    </button>
+                  </div>
+                </div>
+
+              </motion.div>
+            )}
+          </AnimatePresence>
     </div>
   );
 }
