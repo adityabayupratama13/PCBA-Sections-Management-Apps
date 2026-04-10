@@ -1608,10 +1608,10 @@ export default function AttendancePage() {
               transition={{ duration: 0.2 }}
               className="h-full"
             >
-              {activeTab === 'roster' && <RosterTab />}
-              {activeTab === 'overtime' && <OtTab />}
+              {activeTab === 'roster' && RosterTab()}
+              {activeTab === 'overtime' && OtTab()}
               {activeTab === 'leave' && LeaveTab()}
-              {activeTab === 'employee-status' && <EmployeeStatusTab />}
+              {activeTab === 'employee-status' && EmployeeStatusTab()}
             </motion.div>
           </AnimatePresence>
         </div>
