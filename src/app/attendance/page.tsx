@@ -802,13 +802,6 @@ export default function AttendancePage() {
       };
     });
 
-    useEffect(() => {
-      if (stats.length > 0 && (!selectedOtMember || !stats.find(s => s.member.name === selectedOtMember))) {
-        setSelectedOtMember(stats[0].member.name);
-      }
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [stats, selectedOtMember]);
-
     const exportOt = (type: 'excel' | 'pdf') => {
       const headers = ['Member', 'Role', 'Date & Desc', 'Time Range', 'Jam Mati', 'Jam Hidup'];
       const dataObj: Record<string, string | number>[] = [];
@@ -887,7 +880,7 @@ export default function AttendancePage() {
             <div className="flex lg:flex-col gap-2 overflow-x-auto lg:overflow-y-auto max-h-[600px] custom-scrollbar pb-2 lg:pb-0">
               {stats.map(s => {
                 const isSelectedForOt = selectedOtMembers.includes(s.member.name);
-                const isActive = selectedOtMember === s.member.name;
+                const isActive = currentMemberStat?.member?.name === s.member.name;
                 return (
                   <div
                     key={s.member.id}
