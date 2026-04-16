@@ -63,8 +63,8 @@ export async function POST(req: NextRequest) {
     const id = body.id || `TKT-${String(maxNum + 1).padStart(3, '0')}`;
 
     await db.execute(
-      'INSERT INTO tickets (id, title, reporter, priority, status, created_date, resolution, attachments, comments, linked_article) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [id, body.title, body.reporter, body.priority || 'Medium', body.status || 'Backlog',
+      'INSERT INTO tickets (id, title, reporter, priority, difficulty, status, created_date, resolution, attachments, comments, linked_article) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [id, body.title, body.reporter, body.priority || 'Medium', body.difficulty || 0, body.status || 'Backlog',
        toMysqlDatetime(body.createdDate), body.resolution || '',
        body.attachments || '[]', body.comments || '[]', body.linked_article || '']
     );
@@ -96,8 +96,8 @@ export async function PUT(req: NextRequest) {
   const db = getDb();
 
   await db.execute(
-    'UPDATE tickets SET title=?, reporter=?, priority=?, status=?, resolution=?, attachments=?, comments=?, linked_article=?, updated_at=NOW() WHERE id=?',
-    [body.title, body.reporter, body.priority, body.status, body.resolution || '',
+    'UPDATE tickets SET title=?, reporter=?, priority=?, difficulty=?, status=?, resolution=?, attachments=?, comments=?, linked_article=?, updated_at=NOW() WHERE id=?',
+    [body.title, body.reporter, body.priority, body.difficulty || 0, body.status, body.resolution || '',
      body.attachments || '[]', body.comments || '[]', body.linked_article || '', body.id]
   );
 
