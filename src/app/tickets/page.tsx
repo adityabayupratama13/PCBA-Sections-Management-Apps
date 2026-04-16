@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { Search, AlertCircle, Edit2, Trash2, Plus, ChevronLeft, ChevronRight, FileDown, BookOpen } from 'lucide-react';
+import { Search, AlertCircle, Edit2, Trash2, Plus, ChevronLeft, ChevronRight, FileDown, BookOpen, Star } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -39,6 +39,8 @@ export default function TicketsPage() {
   const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
   const [ticketComments, setTicketComments] = useState<Comment[]>([]);
   const [articles, setArticles] = useState<{id: number, title: string}[]>([]);
+  const [difficultyRating, setDifficultyRating] = useState<number>(0);
+  const [hoverDifficulty, setHoverDifficulty] = useState<number>(0);
   const { currentUser } = useAuth();
 
   useEffect(() => {
@@ -134,10 +136,12 @@ export default function TicketsPage() {
     setEditingTicket(null); 
     setUploadedFiles([]);
     setTicketComments([]);
+    setDifficultyRating(0);
     setIsModalOpen(true); 
   };
   const openEditModal = (ticket: Ticket) => { 
     setEditingTicket(ticket); 
+    setDifficultyRating(Number((ticket as any).difficulty) || 0);
     try { setUploadedFiles(JSON.parse(ticket.attachments || '[]')); } catch { setUploadedFiles([]); }
     try { setTicketComments(JSON.parse((ticket as unknown as Record<string, unknown>).comments as string || '[]')); } catch { setTicketComments([]); }
     setIsModalOpen(true); 
@@ -169,6 +173,7 @@ export default function TicketsPage() {
       attachments: JSON.stringify(uploadedFiles),
       comments: JSON.stringify(ticketComments),
       linked_article: formData.get('linked_article') as string,
+      difficulty: difficultyRating,
       userName: currentUser?.name || 'System',
     };
     if (editingTicket) {
@@ -357,6 +362,38 @@ export default function TicketsPage() {
                 {['Critical', 'High', 'Medium', 'Low'].map(p => <option key={p}>{p}</option>)}
               </select>
             </div>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-muted-foreground mb-1.5">Difficulty</label>
+            <div className="flex items-center gap-2 mt-1">
+              <div className="flex items-center gap-1" onMouseLeave={() => setHoverDifficulty(0)}>
+                {[1, 2, 3, 4, 5].map(star => (
+                  <button
+                    key={star}
+                    type="button"
+                    className="focus:outline-none transition-colors duration-150"
+                    onMouseEnter={() => setHoverDifficulty(star)}
+                    onClick={() => setDifficultyRating(star)}
+                  >
+                    <Star
+                      className={`w-5 h-5 ${
+                        (hoverDifficulty || difficultyRating) >= star
+                          ? 'fill-yellow-400 text-yellow-400'
+                          : 'fill-transparent text-muted-foreground/40'
+                      }`}
+                    />
+                  </button>
+                ))}
+              </div>
+              <span className="text-sm font-medium text-muted-foreground ml-2">
+                {(hoverDifficulty || difficultyRating) === 1 ? 'Very Low' :
+                 (hoverDifficulty || difficultyRating) === 2 ? 'Low' :
+                 (hoverDifficulty || difficultyRating) === 3 ? 'Medium' :
+                 (hoverDifficulty || difficultyRating) === 4 ? 'High' :
+                 (hoverDifficulty || difficultyRating) === 5 ? 'Very High' : 'Not set'}
+              </span>
+            </div>
+            <input type="hidden" name="difficulty" value={difficultyRating} />
           </div>
           <div>
             <label className="block text-sm font-medium text-muted-foreground mb-1.5">Status</label>
