@@ -223,6 +223,19 @@ export default function TicketsPage() {
       }
     },
     {
+      header: 'Difficulty', accessor: (t: Ticket) => {
+        const diff = Number((t as any).difficulty) || 0;
+        if (diff === 0) return <span className="text-xs text-muted-foreground/40 italic">Not set</span>;
+        return (
+          <div className="flex items-center gap-0.5" title={['Very Low', 'Low', 'Medium', 'High', 'Very High'][diff - 1]}>
+            {[1, 2, 3, 4, 5].map(s => (
+              <Star key={s} className={`w-3 h-3 ${s <= diff ? 'fill-yellow-400 text-yellow-400' : 'fill-transparent text-muted-foreground/30'}`} />
+            ))}
+          </div>
+        );
+      }
+    },
+    {
       header: 'Status', accessor: (t: Ticket) => (
         <select value={t.status} onChange={e => handleInlineStatusChange(t.id, e.target.value)}
           className="text-xs font-medium bg-transparent border border-border rounded-md px-2 py-1 text-foreground cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary">
