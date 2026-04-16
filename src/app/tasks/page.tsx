@@ -26,6 +26,7 @@ interface Task {
   actual_completion_date?: string;
   resolution?: string;
   attachments?: string; // JSON array string
+  difficulty?: number;
 }
 
 interface TeamMember { id: number; name: string; status: string; }
@@ -368,6 +369,23 @@ export default function TasksPage() {
                     {isCompletedLate && (
                       <div className="mb-2 inline-flex items-center rounded-sm bg-warning/10 px-1.5 py-0.5 text-[10px] font-medium text-warning ring-1 ring-inset ring-warning/20">
                         ⏰ Completed Late ({lateDays} {lateDays === 1 ? 'day' : 'days'})
+                      </div>
+                    )}
+
+                    {task.difficulty && task.difficulty > 0 && (
+                      <div className="flex justify-end mb-1">
+                        <div className="flex items-center gap-0.5">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <Star
+                              key={star}
+                              className={`w-2.5 h-2.5 ${
+                                star <= (task.difficulty || 0)
+                                  ? 'fill-amber-500 text-amber-500'
+                                  : 'text-muted-foreground/30'
+                              }`}
+                            />
+                          ))}
+                        </div>
                       </div>
                     )}
 
