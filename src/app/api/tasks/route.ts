@@ -26,8 +26,8 @@ export async function POST(req: NextRequest) {
   let insertId;
   try {
     const [result] = await db.execute(
-      'INSERT INTO tasks (title, status, priority, assignee, initials, due_date, actual_completion_date, ticket_id, resolution, attachments, comments) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [body.title, body.status || 'Backlog', body.priority || 'Medium',
+      'INSERT INTO tasks (title, status, priority, difficulty, assignee, initials, due_date, actual_completion_date, ticket_id, resolution, attachments, comments) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [body.title, body.status || 'Backlog', body.priority || 'Medium', body.difficulty || 0,
        body.assignee, body.initials || '', body.dueDate || '', actualCompletionDate,
        body.ticketId || '', body.resolution || '', body.attachments || '[]', body.comments || '[]']
     ) as any;
@@ -36,8 +36,8 @@ export async function POST(req: NextRequest) {
     if (e.errno === 1054) {
       // Fallback: column doesn't exist yet (pre-migration)
       const [result] = await db.execute(
-        'INSERT INTO tasks (title, status, priority, assignee, initials, due_date, ticket_id, resolution, attachments, comments) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        [body.title, body.status || 'Backlog', body.priority || 'Medium',
+        'INSERT INTO tasks (title, status, priority, difficulty, assignee, initials, due_date, ticket_id, resolution, attachments, comments) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [body.title, body.status || 'Backlog', body.priority || 'Medium', body.difficulty || 0,
          body.assignee, body.initials || '', body.dueDate || '', body.ticketId || '',
          body.resolution || '', body.attachments || '[]', body.comments || '[]']
       ) as any;
@@ -75,16 +75,16 @@ export async function PUT(req: NextRequest) {
       } catch { /* column doesn't exist yet */ }
     }
     await db.execute(
-      'UPDATE tasks SET title=?, status=?, priority=?, assignee=?, initials=?, due_date=?, actual_completion_date=?, ticket_id=?, resolution=?, attachments=?, comments=?, updated_at=NOW() WHERE id=?',
-      [body.title, body.status, body.priority, body.assignee, body.initials || '', body.dueDate || '',
+      'UPDATE tasks SET title=?, status=?, priority=?, difficulty=?, assignee=?, initials=?, due_date=?, actual_completion_date=?, ticket_id=?, resolution=?, attachments=?, comments=?, updated_at=NOW() WHERE id=?',
+      [body.title, body.status, body.priority, body.difficulty || 0, body.assignee, body.initials || '', body.dueDate || '',
        actualCompletionDate, ticketId, body.resolution || '', body.attachments || '[]', body.comments || '[]', body.id]
     );
   } catch (e: any) {
     if (e.errno === 1054) {
       // Fallback: column doesn't exist yet (pre-migration)
       await db.execute(
-        'UPDATE tasks SET title=?, status=?, priority=?, assignee=?, initials=?, due_date=?, ticket_id=?, resolution=?, attachments=?, comments=?, updated_at=NOW() WHERE id=?',
-        [body.title, body.status, body.priority, body.assignee, body.initials || '', body.dueDate || '',
+        'UPDATE tasks SET title=?, status=?, priority=?, difficulty=?, assignee=?, initials=?, due_date=?, ticket_id=?, resolution=?, attachments=?, comments=?, updated_at=NOW() WHERE id=?',
+        [body.title, body.status, body.priority, body.difficulty || 0, body.assignee, body.initials || '', body.dueDate || '',
          ticketId, body.resolution || '', body.attachments || '[]', body.comments || '[]', body.id]
       );
     } else { throw e; }
