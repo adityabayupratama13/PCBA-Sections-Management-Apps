@@ -457,7 +457,7 @@ export default function TicketsPage() {
             <CommentsSection comments={ticketComments} setComments={setTicketComments} />
           </div>
 
-          <div className="pt-4 flex justify-end gap-3 border-t border-border">
+          <div className="pt-4 flex justify-end gap-3 border-t border-border sticky bottom-0 bg-white dark:bg-surface pb-1">
             <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 border border-border rounded-lg text-sm font-medium text-foreground hover:bg-primary/5 transition-colors">Cancel</button>
             <button type="submit" className="px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg text-sm font-medium transition-colors shadow-sm">{editingTicket ? 'Save Changes' : 'Create Ticket'}</button>
           </div>
