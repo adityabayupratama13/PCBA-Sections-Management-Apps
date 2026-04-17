@@ -39,9 +39,9 @@ export function Modal({ isOpen, onClose, title, children, maxWidth = 'max-w-md' 
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: -10 }}
             transition={{ type: 'spring', damping: 25, stiffness: 400 }}
-            className={`relative bg-white dark:bg-surface border border-border rounded-xl shadow-2xl w-full ${maxWidth} overflow-hidden`}
+            className={`relative bg-white dark:bg-surface border border-border rounded-xl shadow-2xl w-full ${maxWidth} flex flex-col max-h-[90vh]`}
           >
-        <div className="flex items-center justify-between p-4 border-b border-border">
+        <div className="flex items-center justify-between p-4 border-b border-border flex-shrink-0">
           <h2 className="text-lg font-semibold text-foreground">{title}</h2>
           <button 
             onClick={onClose}
@@ -50,7 +50,7 @@ export function Modal({ isOpen, onClose, title, children, maxWidth = 'max-w-md' 
             <X className="w-5 h-5" />
           </button>
         </div>
-        <div className="p-4">
+        <div className="p-4 overflow-y-auto flex-1 custom-scrollbar">
           {children}
         </div>
       </motion.div>
