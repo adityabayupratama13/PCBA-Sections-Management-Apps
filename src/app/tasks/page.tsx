@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { Plus, Search, Calendar as CalendarIcon, Users, Check, ChevronLeft, ChevronRight, FileDown } from 'lucide-react';
+import { Plus, Search, Calendar as CalendarIcon, Users, Check, ChevronLeft, ChevronRight, FileDown, Star } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -26,6 +26,7 @@ interface Task {
   actual_completion_date?: string;
   resolution?: string;
   attachments?: string; // JSON array string
+  difficulty?: number;
 }
 
 interface TeamMember { id: number; name: string; status: string; }
@@ -52,8 +53,9 @@ export default function TasksPage() {
   const [uploading, setUploading] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
   const [taskComments, setTaskComments] = useState<Comment[]>([]);
+  const [difficultyRating, setDifficultyRating] = useState<number>(0);
+  const [hoverDifficulty, setHoverDifficulty] = useState<number>(0);
   const containerRef = useRef<HTMLDivElement>(null);
-
 
   useEffect(() => {
     if (tasks.length > 0 && typeof window !== 'undefined') {
@@ -139,11 +141,13 @@ export default function TasksPage() {
     setSelectedAssignees([]);
     setUploadedFiles([]);
     setTaskComments([]);
+    setDifficultyRating(0);
     setIsModalOpen(true);
   };
 
   const openEditModal = (task: Task) => {
     setEditingTask(task);
+    setDifficultyRating(Number((task as any).difficulty) || 0);
     const validNames = allMembers.map(m => m.name);
     const initialAssignees = task.assignee ? task.assignee.split(', ').filter(a => validNames.includes(a)) : [];
     setSelectedAssignees(initialAssignees);
@@ -191,6 +195,7 @@ export default function TasksPage() {
       initials: initials,
       dueDate: formData.get('dueDate') as string,
       actualCompletionDate: actualCompletionVal || '',
+      difficulty: difficultyRating,
       resolution: formData.get('resolution') as string,
       attachments: JSON.stringify(uploadedFiles),
       comments: JSON.stringify(taskComments),
@@ -367,6 +372,23 @@ export default function TasksPage() {
                       </div>
                     )}
 
+                    {task.difficulty && task.difficulty > 0 && (
+                      <div className="flex justify-end mb-1">
+                        <div className="flex items-center gap-0.5">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <Star
+                              key={star}
+                              className={`w-2.5 h-2.5 ${
+                                star <= (task.difficulty || 0)
+                                  ? 'fill-amber-500 text-amber-500'
+                                  : 'text-muted-foreground/30'
+                              }`}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     <div className="flex items-center justify-between mt-3">
                       <div className="flex items-center gap-1">
                         <Users className="w-3 h-3 text-muted-foreground" />
@@ -402,7 +424,7 @@ export default function TasksPage() {
             <label className="block text-sm font-medium text-muted-foreground mb-1.5">Task Title *</label>
             <input name="title" required defaultValue={editingTask?.title} className={inputClass} />
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-muted-foreground mb-1.5">Status</label>
               <select name="status" defaultValue={editingTask?.status || 'Backlog'} className={inputClass + ' cursor-pointer'}>
@@ -414,6 +436,38 @@ export default function TasksPage() {
               <select name="priority" defaultValue={editingTask?.priority || 'Medium'} className={inputClass + ' cursor-pointer'}>
                 {['High', 'Medium', 'Low'].map(p => <option key={p}>{p}</option>)}
               </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-muted-foreground mb-1.5">Difficulty</label>
+              <div className="flex flex-col gap-1 mt-1">
+                <div className="flex items-center gap-1" onMouseLeave={() => setHoverDifficulty(0)}>
+                  {[1, 2, 3, 4, 5].map(star => (
+                    <button
+                      key={star}
+                      type="button"
+                      className="focus:outline-none transition-colors duration-150"
+                      onMouseEnter={() => setHoverDifficulty(star)}
+                      onClick={() => setDifficultyRating(star)}
+                    >
+                      <Star
+                        className={`w-5 h-5 ${
+                          (hoverDifficulty || difficultyRating) >= star
+                            ? 'fill-yellow-400 text-yellow-400'
+                            : 'fill-transparent text-muted-foreground/40'
+                        }`}
+                      />
+                    </button>
+                  ))}
+                </div>
+                <span className="text-xs font-medium text-muted-foreground">
+                  {(hoverDifficulty || difficultyRating) === 1 ? 'Very Low' :
+                   (hoverDifficulty || difficultyRating) === 2 ? 'Low' :
+                   (hoverDifficulty || difficultyRating) === 3 ? 'Medium' :
+                   (hoverDifficulty || difficultyRating) === 4 ? 'High' :
+                   (hoverDifficulty || difficultyRating) === 5 ? 'Very High' : 'Not set'}
+                </span>
+                <input type="hidden" name="difficulty" value={difficultyRating} />
+              </div>
             </div>
           </div>
 
@@ -478,7 +532,7 @@ export default function TasksPage() {
             <CommentsSection comments={taskComments} setComments={setTaskComments} />
           </div>
 
-          <div className="pt-4 flex justify-end gap-3 border-t border-border">
+          <div className="pt-4 flex justify-end gap-3 border-t border-border sticky bottom-0 bg-white dark:bg-surface pb-1">
             <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 border border-border rounded-lg text-sm font-medium text-foreground hover:bg-primary/5 transition-colors">Cancel</button>
             <button type="submit" className="px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg text-sm font-medium transition-colors shadow-sm">
               {editingTask && editingTask.id > 0 ? 'Save Changes' : 'Add Task'}

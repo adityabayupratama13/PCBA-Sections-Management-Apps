@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { Search, AlertCircle, Edit2, Trash2, Plus, ChevronLeft, ChevronRight, FileDown, BookOpen } from 'lucide-react';
+import { Search, AlertCircle, Edit2, Trash2, Plus, ChevronLeft, ChevronRight, FileDown, BookOpen, Star } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -39,6 +39,8 @@ export default function TicketsPage() {
   const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
   const [ticketComments, setTicketComments] = useState<Comment[]>([]);
   const [articles, setArticles] = useState<{id: number, title: string}[]>([]);
+  const [difficultyRating, setDifficultyRating] = useState<number>(0);
+  const [hoverDifficulty, setHoverDifficulty] = useState<number>(0);
   const { currentUser } = useAuth();
 
   useEffect(() => {
@@ -134,10 +136,12 @@ export default function TicketsPage() {
     setEditingTicket(null); 
     setUploadedFiles([]);
     setTicketComments([]);
+    setDifficultyRating(0);
     setIsModalOpen(true); 
   };
   const openEditModal = (ticket: Ticket) => { 
     setEditingTicket(ticket); 
+    setDifficultyRating(Number((ticket as any).difficulty) || 0);
     try { setUploadedFiles(JSON.parse(ticket.attachments || '[]')); } catch { setUploadedFiles([]); }
     try { setTicketComments(JSON.parse((ticket as unknown as Record<string, unknown>).comments as string || '[]')); } catch { setTicketComments([]); }
     setIsModalOpen(true); 
@@ -169,6 +173,7 @@ export default function TicketsPage() {
       attachments: JSON.stringify(uploadedFiles),
       comments: JSON.stringify(ticketComments),
       linked_article: formData.get('linked_article') as string,
+      difficulty: difficultyRating,
       userName: currentUser?.name || 'System',
     };
     if (editingTicket) {
@@ -215,6 +220,19 @@ export default function TicketsPage() {
       header: 'Priority', accessor: (t: Ticket) => {
         const styles: Record<string, string> = { Critical: 'bg-red-500/15 text-red-400 border-red-500/25', High: 'bg-orange-500/15 text-orange-400 border-orange-500/25', Medium: 'bg-amber-500/15 text-amber-400 border-amber-500/25', Low: 'bg-blue-500/15 text-blue-400 border-blue-500/25' };
         return <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${styles[t.priority] || ''}`}>{t.priority}</span>;
+      }
+    },
+    {
+      header: 'Difficulty', accessor: (t: Ticket) => {
+        const diff = Number((t as any).difficulty) || 0;
+        if (diff === 0) return <span className="text-xs text-muted-foreground/40 italic">Not set</span>;
+        return (
+          <div className="flex items-center gap-0.5" title={['Very Low', 'Low', 'Medium', 'High', 'Very High'][diff - 1]}>
+            {[1, 2, 3, 4, 5].map(s => (
+              <Star key={s} className={`w-3 h-3 ${s <= diff ? 'fill-yellow-400 text-yellow-400' : 'fill-transparent text-muted-foreground/30'}`} />
+            ))}
+          </div>
+        );
       }
     },
     {
@@ -359,6 +377,38 @@ export default function TicketsPage() {
             </div>
           </div>
           <div>
+            <label className="block text-sm font-medium text-muted-foreground mb-1.5">Difficulty</label>
+            <div className="flex items-center gap-2 mt-1">
+              <div className="flex items-center gap-1" onMouseLeave={() => setHoverDifficulty(0)}>
+                {[1, 2, 3, 4, 5].map(star => (
+                  <button
+                    key={star}
+                    type="button"
+                    className="focus:outline-none transition-colors duration-150"
+                    onMouseEnter={() => setHoverDifficulty(star)}
+                    onClick={() => setDifficultyRating(star)}
+                  >
+                    <Star
+                      className={`w-5 h-5 ${
+                        (hoverDifficulty || difficultyRating) >= star
+                          ? 'fill-yellow-400 text-yellow-400'
+                          : 'fill-transparent text-muted-foreground/40'
+                      }`}
+                    />
+                  </button>
+                ))}
+              </div>
+              <span className="text-sm font-medium text-muted-foreground ml-2">
+                {(hoverDifficulty || difficultyRating) === 1 ? 'Very Low' :
+                 (hoverDifficulty || difficultyRating) === 2 ? 'Low' :
+                 (hoverDifficulty || difficultyRating) === 3 ? 'Medium' :
+                 (hoverDifficulty || difficultyRating) === 4 ? 'High' :
+                 (hoverDifficulty || difficultyRating) === 5 ? 'Very High' : 'Not set'}
+              </span>
+            </div>
+            <input type="hidden" name="difficulty" value={difficultyRating} />
+          </div>
+          <div>
             <label className="block text-sm font-medium text-muted-foreground mb-1.5">Status</label>
             <select name="status" defaultValue={editingTicket?.status || 'Backlog'} className={inputClass + ' cursor-pointer'}>
               {['Backlog', 'In Progress', 'Review', 'Done'].map(s => <option key={s}>{s}</option>)}
@@ -407,7 +457,7 @@ export default function TicketsPage() {
             <CommentsSection comments={ticketComments} setComments={setTicketComments} />
           </div>
 
-          <div className="pt-4 flex justify-end gap-3 border-t border-border">
+          <div className="pt-4 flex justify-end gap-3 border-t border-border sticky bottom-0 bg-white dark:bg-surface pb-1">
             <button type="button" onClick={() => setIsModalOpen(false)} className="px-4 py-2 border border-border rounded-lg text-sm font-medium text-foreground hover:bg-primary/5 transition-colors">Cancel</button>
             <button type="submit" className="px-4 py-2 bg-primary hover:bg-primary/90 text-white rounded-lg text-sm font-medium transition-colors shadow-sm">{editingTicket ? 'Save Changes' : 'Create Ticket'}</button>
           </div>
