@@ -71,8 +71,8 @@ export async function POST(req: NextRequest) {
 
     const taskPriority = body.priority === 'Critical' ? 'High' : (body.priority || 'Medium');
     await db.execute(
-      'INSERT INTO tasks (title, status, priority, assignee, initials, due_date, ticket_id, resolution, attachments, comments) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [`[${id}] ${body.title}`, body.status || 'Backlog', taskPriority, 'Unassigned', 'UN', '', id, body.resolution || '', body.attachments || '[]', body.comments || '[]']
+      'INSERT INTO tasks (title, status, priority, difficulty, assignee, initials, due_date, ticket_id, resolution, attachments, comments) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [`[${id}] ${body.title}`, body.status || 'Backlog', taskPriority, body.difficulty || 0, 'Unassigned', 'UN', '', id, body.resolution || '', body.attachments || '[]', body.comments || '[]']
     );
     await db.execute(
       'INSERT INTO daily_logs (date, member, activity, hours, location, source) VALUES (?, ?, ?, ?, ?, ?)',
@@ -104,9 +104,9 @@ export async function PUT(req: NextRequest) {
   const [taskRows] = await db.execute('SELECT id FROM tasks WHERE ticket_id = ?', [body.id]) as any;
   const linkedTask = taskRows[0] as { id: number } | undefined;
   if (linkedTask) {
-    await db.execute('UPDATE tasks SET status=? WHERE id=?', [body.status, linkedTask.id]);
+    await db.execute('UPDATE tasks SET status=?, difficulty=? WHERE id=?', [body.status, body.difficulty || 0, linkedTask.id]);
     await db.execute('INSERT INTO audit_logs (action, module, details, user_name) VALUES (?, ?, ?, ?)',
-      ['Updated', 'Tasks', `Auto-synced task status to "${body.status}" from ticket ${body.id}`, 'System']);
+      ['Updated', 'Tasks', `Auto-synced task status and difficulty from ticket ${body.id}`, 'System']);
   }
   await db.execute('UPDATE daily_logs SET activity = ? WHERE source = ?',
     [`[Ticket ${body.id}] ${body.status} — ${body.title}`, `ticket:${body.id}`]);
