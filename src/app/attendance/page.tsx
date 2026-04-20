@@ -970,8 +970,8 @@ export default function AttendancePage() {
                         {currentMemberStat.logsToEdit.length > 0 ? (
                           currentMemberStat.logsToEdit.map((l, idx) => {
                             const jnHidup = calculateJamHidup(Number(l.hours), currentMemberStat.member.role);
-                            const isITSpv = currentUser?.role === 'IT Supervisor';
-                            const isMgmt = currentUser?.member_type === 'Management';
+                            const canApproveFirst = canApproveAsITSupervisor(currentUser);
+                            const canApproveFinal = canApproveAsManager(currentUser);
                             const isRevised = l.revision_count > 0;
 
                             return (
@@ -1060,19 +1060,19 @@ export default function AttendancePage() {
                                 </td>
                                 <td className="px-5 py-4 text-right">
                                   <div className="flex justify-end items-center gap-2">
-                                    {l.status === 'Pending' && isITSpv && (
+                                    {l.status === 'Pending' && canApproveFirst && (
                                       <>
                                         <button onClick={() => handleOTApprove(l.id)} className="p-1.5 hover:bg-success/20 text-success bg-success/10 border border-success/20 rounded-lg transition-colors shadow-sm" title="Approve"><CheckCircle2 className="w-4 h-4" /></button>
                                         <button onClick={() => setDeclineOtId(l.id)} className="p-1.5 hover:bg-destructive/20 text-destructive bg-destructive/10 border border-destructive/20 rounded-lg transition-colors shadow-sm" title="Decline"><XCircle className="w-4 h-4" /></button>
                                       </>
                                     )}
-                                    {l.status === 'IT_Approved' && isMgmt && (
+                                    {l.status === 'IT_Approved' && canApproveFinal && (
                                       <>
                                         <button onClick={() => handleOTApprove(l.id)} className="p-1.5 hover:bg-success/20 text-success bg-success/10 border border-success/20 rounded-lg transition-colors shadow-sm" title="Approve"><CheckCircle2 className="w-4 h-4" /></button>
                                         <button onClick={() => setDeclineOtId(l.id)} className="p-1.5 hover:bg-destructive/20 text-destructive bg-destructive/10 border border-destructive/20 rounded-lg transition-colors shadow-sm" title="Decline"><XCircle className="w-4 h-4" /></button>
                                       </>
                                     )}
-                                    {((isITSpv || isMgmt || l.member_name === currentUser?.name) && l.status !== 'Approved' || isManager) && (
+                                    {((canApproveFirst || canApproveFinal || l.member_name === currentUser?.name) && l.status !== 'Approved' || isManager) && (
                                       <button onClick={() => { setEditingOtLog(l); setIsOtModalOpen(true); }} className="text-xs font-medium text-amber-500 hover:text-amber-600 transition-colors ml-2">Revisi</button>
                                     )}
                                     {isManager && (
