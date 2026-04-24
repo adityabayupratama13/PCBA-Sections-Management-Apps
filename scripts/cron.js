@@ -13,7 +13,7 @@ cron.schedule('30 6 * * *', () => {
     const req = http.request(
       {
         host: 'localhost',
-        port: 3002,
+        port: 3000,
         path: '/api/cron/send-report',
         method: 'POST',
       },

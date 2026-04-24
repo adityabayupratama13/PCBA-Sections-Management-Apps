@@ -15,8 +15,18 @@ const SMTP_PASS = process.env.SMTP_PASS || 'V^2#h@4)Q%7*p&8^D!4)r';
 
 export async function POST(req: Request) {
   try {
-    const today = new Date().toISOString().split('T')[0];
-    const data = await getReportData(today);
+    let dateToUse = new Date().toISOString().split('T')[0];
+    
+    // Check if a specific date was requested in the body
+    try {
+      const body = await req.json();
+      if (body.date) dateToUse = body.date;
+    } catch (e) {
+      // No body or invalid JSON, fallback to today
+    }
+
+    const data = await getReportData(dateToUse);
+    const today = dateToUse; // Use requested date for file naming and subject
 
     // 1. Fetch Recipients from global_settings Table
     const { getDb } = require('@/lib/db');

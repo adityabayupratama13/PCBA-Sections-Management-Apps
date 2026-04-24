@@ -57,7 +57,11 @@ export default function ReportPage() {
     setIsSendingReport(true);
     toast.info('Synthesizing and transmitting report...');
     try {
-      const res = await fetch('/api/cron/send-report', { method: 'POST' });
+      const res = await fetch('/api/cron/send-report', { 
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ date })
+      });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Failed to dispatch email');
       toast.success('Email successfully routed to ' + currentEmails.length + ' recipients!');
