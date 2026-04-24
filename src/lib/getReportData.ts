@@ -10,9 +10,14 @@ const otDbConfig = {
   port: parseInt(process.env.MYSQL_PORT || '3306'),
 };
 
-export async function getReportData(date: string) {
-  const db = getDb();
+export async function getReportData(date: string, dbOverride?: mysql.Pool) {
+  const db = dbOverride || getDb();
   
+  // Cutoff window: targetDate 06:30 AM to nextDay 06:30 AM
+  const startTime = `${date} 06:30:00`;
+  const nextDay = new Date(new Date(date).getTime() + 86400000).toISOString().split('T')[0];
+  const endTime = `${nextDay} 06:30:00`;
+
   function getWeekBoundaries(d: string) {
     const dt = new Date(d + 'T00:00:00Z');
     const day = dt.getUTCDay();
@@ -27,8 +32,8 @@ export async function getReportData(date: string) {
     if (!dbDateString) return false;
     const t = new Date(dbDateString).getTime();
     if (isNaN(t)) return false;
-    const startTimeStr = `${targetDateStr}T06:30:00+07:00`;
-    const startT = new Date(startTimeStr).getTime();
+    const sStr = `${targetDateStr}T06:30:00+07:00`;
+    const startT = new Date(sStr).getTime();
     const endT = startT + 86400000;
     return t >= startT && t < endT;
   }
@@ -49,16 +54,13 @@ export async function getReportData(date: string) {
   };
 
   // ── Tasks ─────────────────────────────────────────────────
-  const [allTasks] = await db.query('SELECT *, DATE_FORMAT(actual_completion_date, \'%Y-%m-%d\') as ac_date FROM tasks') as any;
-  const tasksToday = allTasks.filter((t: any) => {
-    // 1. If it was completed on the target date, it MUST be included
-    if (t.ac_date === date) return true;
-    
-    // 2. If it is NOT done, but was created today, include it in the report as "New/In Progress"
-    if (t.status !== 'Done' && isWithinCutoff(t.created_at, date)) return true;
-    
-    return false;
-  });
+  // SQL Filtering for precision
+  const [tasksToday] = await db.query(`
+    SELECT *, DATE_FORMAT(actual_completion_date, '%Y-%m-%d') as ac_date 
+    FROM tasks 
+    WHERE (DATE(actual_completion_date) = ?) 
+       OR (status != 'Done' AND created_at >= ? AND created_at < ?)
+  `, [date, startTime, endTime]) as any;
   const taskStats = {
     totalCreatedToday: tasksToday.length,
     backlog: tasksToday.filter((t: any) => t.status === 'Backlog').length,
