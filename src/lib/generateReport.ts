@@ -334,8 +334,8 @@ export async function generateDailyReport(data: any, reportDate: string) {
     doc.rect(0, pageHeight - 15, pageWidth, 15, 'F');
     doc.setTextColor(...colors.textMuted);
     doc.setFontSize(8);
-    const genTime = new Date(data.generatedAt).toLocaleString('en-GB');
-    doc.text(`Daily Report for ${dateStr}`, margin, pageHeight - 6);
+    const genTime = new Date(data.generatedAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    doc.text(`Daily Report for ${dateStr} (Generated at ${genTime})`, margin, pageHeight - 6);
     doc.text(`Page ${i} of ${pageCount}`, pageWidth - margin - 15, pageHeight - 6);
   }
 
