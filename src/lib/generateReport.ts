@@ -22,6 +22,13 @@ export async function generateDailyReport(data: any, reportDate: string) {
     border: [226, 232, 240] as [number, number, number],   // slate-200
   };
 
+  // Format the date string once for use in both header and footer
+  const [y, m, d] = reportDate.split('-').map(Number);
+  const dateObj = new Date(y, m - 1, d);
+  const dateStr = dateObj.toLocaleDateString('en-GB', { 
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
+  });
+
   const addHeader = (title: string, subtitle: string) => {
     doc.setFillColor(...colors.primary);
     doc.rect(0, 0, pageWidth, 40, 'F');
@@ -39,11 +46,6 @@ export async function generateDailyReport(data: any, reportDate: string) {
     doc.text(title, margin, 20);
     doc.setFontSize(11);
     doc.setFont('helvetica', 'normal');
-    const [y, m, d] = reportDate.split('-').map(Number);
-    const dateObj = new Date(y, m - 1, d);
-    const dateStr = dateObj.toLocaleDateString('en-GB', { 
-      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
-    });
     doc.text(`${subtitle} • ${dateStr}`, margin, 30);
     currentY = 50;
   };
