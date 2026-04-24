@@ -49,8 +49,16 @@ export async function getReportData(date: string) {
   };
 
   // ── Tasks ─────────────────────────────────────────────────
-  const [allTasks] = await db.query('SELECT * FROM tasks') as any;
-  const tasksToday = allTasks.filter((t: any) => isWithinCutoff(t.created_at, date));
+  const [allTasks] = await db.query('SELECT *, DATE_FORMAT(actual_completion_date, \'%Y-%m-%d\') as ac_date FROM tasks') as any;
+  const tasksToday = allTasks.filter((t: any) => {
+    // 1. If it was completed on the target date, it MUST be included
+    if (t.ac_date === date) return true;
+    
+    // 2. If it is NOT done, but was created today, include it in the report as "New/In Progress"
+    if (t.status !== 'Done' && isWithinCutoff(t.created_at, date)) return true;
+    
+    return false;
+  });
   const taskStats = {
     totalCreatedToday: tasksToday.length,
     backlog: tasksToday.filter((t: any) => t.status === 'Backlog').length,

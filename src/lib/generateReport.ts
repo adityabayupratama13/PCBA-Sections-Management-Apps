@@ -39,7 +39,9 @@ export async function generateDailyReport(data: any, reportDate: string) {
     doc.text(title, margin, 20);
     doc.setFontSize(11);
     doc.setFont('helvetica', 'normal');
-    const dateStr = new Date(reportDate).toLocaleDateString('en-GB', { 
+    const [y, m, d] = reportDate.split('-').map(Number);
+    const dateObj = new Date(y, m - 1, d);
+    const dateStr = dateObj.toLocaleDateString('en-GB', { 
       weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
     });
     doc.text(`${subtitle} • ${dateStr}`, margin, 30);
