@@ -333,7 +333,7 @@ export async function generateDailyReport(data: any, reportDate: string) {
     doc.setTextColor(...colors.textMuted);
     doc.setFontSize(8);
     const genTime = new Date(data.generatedAt).toLocaleString('en-GB');
-    doc.text(`Generated automatically by IT Apps on ${genTime}`, margin, pageHeight - 6);
+    doc.text(`Daily Report for ${dateStr}`, margin, pageHeight - 6);
     doc.text(`Page ${i} of ${pageCount}`, pageWidth - margin - 15, pageHeight - 6);
   }
 
