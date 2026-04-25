@@ -73,7 +73,9 @@ export async function POST(req: Request) {
       }
     });
 
-    const dateStr = new Date(today).toLocaleDateString('en-GB', {weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'});
+    const [y, m, d] = today.split('-').map(Number);
+    const dateObj = new Date(y, m - 1, d);
+    const dateStr = dateObj.toLocaleDateString('en-GB', {weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'});
 
     // 4. Construct the Raw CSS Template
     const rawHtml = `<!DOCTYPE html>

@@ -22,6 +22,13 @@ export async function generateDailyReport(data: any, reportDate: string) {
     border: [226, 232, 240] as [number, number, number],   // slate-200
   };
 
+  // Format the date string once for use in both header and footer
+  const [y, m, d] = reportDate.split('-').map(Number);
+  const dateObj = new Date(y, m - 1, d);
+  const dateStr = dateObj.toLocaleDateString('en-GB', { 
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
+  });
+
   const addHeader = (title: string, subtitle: string) => {
     doc.setFillColor(...colors.primary);
     doc.rect(0, 0, pageWidth, 40, 'F');
@@ -39,9 +46,6 @@ export async function generateDailyReport(data: any, reportDate: string) {
     doc.text(title, margin, 20);
     doc.setFontSize(11);
     doc.setFont('helvetica', 'normal');
-    const dateStr = new Date(reportDate).toLocaleDateString('en-GB', { 
-      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
-    });
     doc.text(`${subtitle} • ${dateStr}`, margin, 30);
     currentY = 50;
   };
@@ -330,8 +334,10 @@ export async function generateDailyReport(data: any, reportDate: string) {
     doc.rect(0, pageHeight - 15, pageWidth, 15, 'F');
     doc.setTextColor(...colors.textMuted);
     doc.setFontSize(8);
-    const genTime = new Date(data.generatedAt).toLocaleString('en-GB');
-    doc.text(`Generated automatically by IT Apps on ${genTime}`, margin, pageHeight - 6);
+    const timeStr = new Date(data.generatedAt).toLocaleTimeString('en-US', { 
+      hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true 
+    });
+    doc.text(`Daily Report for ${dateStr} ${timeStr}`, margin, pageHeight - 6);
     doc.text(`Page ${i} of ${pageCount}`, pageWidth - margin - 15, pageHeight - 6);
   }
 
