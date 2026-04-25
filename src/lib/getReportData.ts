@@ -56,9 +56,9 @@ export async function getReportData(date: string, dbOverride?: mysql.Pool) {
   // ── Tasks ─────────────────────────────────────────────────
   // SQL Filtering for precision
   const [tasksToday] = await db.query(`
-    SELECT *, DATE_FORMAT(actual_completion_date, '%Y-%m-%d') as ac_date 
+    SELECT *, DATE_FORMAT(CONVERT_TZ(actual_completion_date, '+00:00', '+07:00'), '%Y-%m-%d') as ac_date 
     FROM tasks 
-    WHERE (DATE(actual_completion_date) = ?) 
+    WHERE (DATE_FORMAT(CONVERT_TZ(actual_completion_date, '+00:00', '+07:00'), '%Y-%m-%d') = ?) 
        OR (status != 'Done' AND created_at >= ? AND created_at < ?)
   `, [date, startTime, endTime]) as any;
   const taskStats = {
